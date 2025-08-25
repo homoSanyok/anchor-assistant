@@ -1,0 +1,10 @@
+{
+  "anchor-assistant": {
+    "file_name": "anchor-assistant.jsonl",
+    "columns": {
+      "prompt": "prompt",
+      "response": "response",
+      "system": "system"
+    }
+  }
+}
