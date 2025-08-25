@@ -1,6 +1,6 @@
 {
   "anchor-assistant": {
-    "file_name": "anchor-assistant.jsonl",
+    "file_name": "dataset.jsonl",
     "columns": {
       "prompt": "prompt",
       "response": "response",
