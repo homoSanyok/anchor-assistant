@@ -1,7 +1,6 @@
 ### model
 model_name_or_path: google/gemma-3-1b-it
-load_in_4bit: true
-bnb_4bit_quant_type: nf4
+quantization_bit: 4
 
 ### method
 finetuning_type: lora
