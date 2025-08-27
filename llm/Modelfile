@@ -1,4 +1,6 @@
-FROM llama3.2:1b
+FROM /Users/homo-sanyok/Desktop/projects/LLaMA-Factory/models/gemma-3-1b-it
+
+ADAPTER /Users/homo-sanyok/Desktop/projects/LLaMA-Factory/saves/gemma-lora/training_args.bin
 
 PARAMETER temperature 0.3
 PARAMETER num_predict 150
@@ -27,9 +29,9 @@ SYSTEM """
 <полный путь через запятую>. <краткое объяснение на русском>
 
 Примеры:
-- #settings-button, #palette-menu-button. Откройте настройки, затем выберите смену цветовой схемы.
-- #user-profile-button, #notifications-button. Перейдите в профиль, затем в раздел уведомлений.
-- #settings-button. Используйте кнопку настроек в главном меню.
+- #settings-button, #palette-menu-button. Настройки ➔ Меню палитры.
+- #user-profile-button, #notifications-button. Профиль ➔ Уведомления.
+- #settings-button. Настройки.
 
 # ПРАВИЛА
 - Используй ТОЛЬКО предоставленные якоря

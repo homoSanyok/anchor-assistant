@@ -1,0 +1,8 @@
+model_name_or_path: models/gemma-3-1b-it
+adapter_name_or_path: saves/gemma-lora
+template: gemma
+
+# Параметры генерации
+temperature: 0.3
+top_p: 0.9
+max_length: 1024
