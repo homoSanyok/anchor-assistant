@@ -1,2 +1,5 @@
 .idea
 llm/gemma-lora
+node_modules
+
+gigachat-authorization-key.txt
