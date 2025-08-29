@@ -31,6 +31,7 @@ export class SelectorHighlighter {
         document.body.appendChild(highlighter);
         setTimeout(() => highlighter.style.opacity = ".5", 300);
 
+
         for (let i = 0; i < elements.length; i++) {
             const highlightElement = new HighlightElement(elements.item(i), () => {
                 highlightElement.remove();
@@ -38,6 +39,7 @@ export class SelectorHighlighter {
                 highlighter.style.opacity = "0";
                 setTimeout(() => highlighter.remove(), 300);
                 setTimeout(() => window.dispatchEvent(new Event(this.selector)), this.options?.delay ?? 0);
+                window.dispatchEvent(new Event("closehighlighter"));
             })
         }
 

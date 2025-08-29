@@ -107,5 +107,6 @@ export class GigaChat extends LLMConnector {
         super();
 
         this.accessor();
+        setInterval(this.accessor.bind(this), 1000 * 60 * 10);
     }
 }

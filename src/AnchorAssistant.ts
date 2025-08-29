@@ -252,12 +252,14 @@ export class AnchorAssistant {
 
         input.value = "";
 
-        this.highlightSelectors(["#link-button"]);
-        // this.connector.send(message)
-        //     .then(answer => {
-        //         this.messages.push(answer);
-        //         window.dispatchEvent(new Event("messages-update"));
-        //     });
+        // this.highlightSelectors(["#settings-button", "#edit-link-button"]);
+        this.connector.send(message)
+            .then(answer => {
+                this.messages.push(answer);
+                window.dispatchEvent(new Event("messages-update"));
+
+                this.highlightSelectors(answer.selectors ?? []);
+            });
     }
 
     /**
