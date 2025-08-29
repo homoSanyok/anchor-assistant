@@ -80,5 +80,6 @@ export class HighlightElement {
 
         this.highlight();
         this.element.addEventListener("click", this.callback);
+        window.addEventListener("closehighlighter", this.remove.bind(this));
     }
 }

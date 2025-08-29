@@ -40,6 +40,13 @@ export class SelectorHighlighter {
                 setTimeout(() => window.dispatchEvent(new Event(this.selector)), this.options?.delay ?? 0);
             })
         }
+
+        highlighter.addEventListener("click", () => {
+            highlighter.style.opacity = "0";
+            setTimeout(() => highlighter.remove(), 300);
+
+            window.dispatchEvent(new Event("closehighlighter"));
+        }, { once: true });
     }
 
     /**
@@ -54,5 +61,8 @@ export class SelectorHighlighter {
         }
 
         window.addEventListener(parentSelector, this.highlight.bind(this), { once: true });
+        window.addEventListener("closehighlighter", () => {
+            window.removeEventListener(parentSelector, this.highlight.bind(this));
+        }, { once: true })
     }
 }
