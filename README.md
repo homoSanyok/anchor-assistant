@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/anchor-assistant">
-    <img src="https://img.shields.io/badge/npm-v0.0.5-%23ddf0de?logo=npm" alt="npm" />
+    <img src="https://img.shields.io/badge/npm-v0.0.8-%23ddf0de?logo=npm" alt="npm" />
   </a>
 </p>
 

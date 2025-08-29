@@ -4,17 +4,17 @@
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "module": "dist/index.esm.js",
+  "module": "dist/esm/index.js",
   "exports": {
     ".": {
-      "import": "./dist/index.esm.js",
+      "import": "./dist/esm/index.js",
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
     "build": "tsc && npm run build:esm",
-    "build:esm": "tsc --module es2015 --outDir dist/esm && echo '{\"type\": \"module\"}' > dist/esm/package.json"
+    "build:esm": "tsc --module es2022 --outDir dist/esm && echo '{\"type\": \"module\"}' > dist/esm/package.json"
   },
   "repository": {
     "type": "git",
@@ -28,5 +28,9 @@
   "homepage": "https://github.com/homoSanyok/anchor-assistant#readme",
   "devDependencies": {
     "typescript": "^5.9.2"
-  }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
 }
