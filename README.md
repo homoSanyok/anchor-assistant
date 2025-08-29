@@ -1,9 +1,8 @@
-<div align="center" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-    <img src="public/anchor-assistant.ico" alt="anchor-assistant-logo" width="24" height="24"/>
-    <h1 style="margin: 0; padding: 16px 0;">AnchorAssistant</h1>
-</div>
+<h1 align="center">AnchorAssistant</h1>
 
 <p align="center">
+  <img src="public/anchor-assistant.svg" alt="overture-logo" width="120px" height="120px"/>
+  <br>  
     <em>
         AnchorAssistant - это простая интеграция помощника навигации по вашему сайту
     </em>
@@ -129,7 +128,7 @@ new AnchorAssistant(
 )
 ```
 
-Мы предоставляем собственные коннекторы для некоторых LLM. <br>
+Вам предоставлены коннекторов для некоторых LLM. <br>
 Предоставленные коннекторы уже умеют взаимодействовать с API, вам останется только
 создать их экземпляр, задать `options` и пользоваться.
 
