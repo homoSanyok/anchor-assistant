@@ -1,7 +1,6 @@
-import {LLMConnector} from "./LLMConnector";
-import {Anchor, GigaChatChatCompletion, Message} from "../types";
-import {GigaChatConfig} from "../types";
-import {SystemPrompt} from "./SystemPrompt";
+import {Anchor, GigaChatChatCompletion, Message, GigaChatConfig} from "../types";
+import {LLMConnector} from "./";
+import { SystemPrompt } from "./SystemPrompt";
 
 /**
  * Класс подключает

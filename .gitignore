@@ -1,5 +1,6 @@
 .idea
 llm/gemma-lora
 node_modules
+dist
 
 gigachat-authorization-key.txt

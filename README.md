@@ -10,12 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://homosanyok.github.io/overture/"><strong>Демо приложения</strong></a>
-  <br>
-</p>
-
-<p align="center">
   <a href="https://www.npmjs.com/package/anchor-assistant">
-    <img src="https://img.shields.io/badge/npm-v0.0.6-%23ddf0de?logo=npm" alt="npm" />
+    <img src="https://img.shields.io/badge/npm-v0.0.5-%23ddf0de?logo=npm" alt="npm" />
   </a>
 </p>
+

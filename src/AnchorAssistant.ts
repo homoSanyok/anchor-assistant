@@ -1,12 +1,10 @@
 /**
  * @module AnchorAssistant
  */
-import {ChatButtonIcon, ChatSendButtonIcon} from "./icons";
-import {Message, SelectorHighlighterOptions} from "./types";
+import {ChatButtonIcon, ChatSendButtonIcon, ChatCloseButtonIcon} from "./icons";
+import {Message, SelectorHighlighterOptions, Anchor} from "./types";
 import {ChatMessageFieldStyle, ChatStyle, ChatButtonStyle, ChatFooterStyle, ChatMessagesStyle} from "./styles";
-import {ChatCloseButtonIcon} from "./icons/ChatCloseButtonIcon";
 import {LLMConnector, SelectorHighlighter} from "./utils";
-import {Anchor} from "./types";
 
 /**
  * Класс `AnchorAssistant`, отображающий кнопку чата,
