@@ -252,7 +252,7 @@ export class AnchorAssistant {
 
         input.value = "";
 
-        this.highlightSelectors(["#settings-button", "#settings-palette"]);
+        this.highlightSelectors(["#link-button"]);
         // this.connector.send(message)
         //     .then(answer => {
         //         this.messages.push(answer);
@@ -287,7 +287,7 @@ export class AnchorAssistant {
         private readonly parent?: HTMLElement,
         private readonly highlighterOptions?: SelectorHighlighterOptions
     ) {
-        this.connector.setAnchors(anchors);
+        this.connector.setAnchors(this.anchors);
 
         this.initStyles();
 

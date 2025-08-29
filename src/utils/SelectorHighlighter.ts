@@ -1,4 +1,5 @@
 import {SelectorHighlighterOptions} from "../types";
+import {HighlightElement} from "./HighlightElement";
 
 /**
  * Класс реализует подсветку компонента
@@ -12,11 +13,8 @@ export class SelectorHighlighter {
      * @private
      */
     private highlight() {
-        const element = document.querySelector(this.selector) as HTMLElement | undefined;
-        if (!element) return;
-
-        const parentElement = element.parentElement;
-        if (!parentElement) return;
+        const elements = document.querySelectorAll<HTMLElement>(this.selector);
+        if (elements.length === 0) return;
 
         const highlighter = document.createElement("div");
 
@@ -30,38 +28,18 @@ export class SelectorHighlighter {
         highlighter.style.top = "0";
         highlighter.style.left = "0";
 
-        const elementRect = element.getBoundingClientRect();
-        const originalElementStyles = {
-          position: element.style.position,
-          zIndex: element.style.zIndex,
-          left: element.style.left,
-          top: element.style.top
-        };
-
-        const plugElement = element.cloneNode(true) as HTMLElement;
-        parentElement.insertBefore(plugElement, element);
-
-        document.body.appendChild(element);
-        element.style.position = "absolute";
-        element.style.top = `${elementRect.top + window.scrollY}px`;
-        element.style.left = `${elementRect.left + window.scrollX}px`;
-        element.style.zIndex = "101";
-
         document.body.appendChild(highlighter);
         setTimeout(() => highlighter.style.opacity = ".5", 300);
 
-        element.addEventListener("click", () => {
-            plugElement.remove();
-            parentElement.appendChild(element);
-            element.style.position = originalElementStyles.position;
-            element.style.top = originalElementStyles.top;
-            element.style.left = originalElementStyles.left;
-            element.style.zIndex = originalElementStyles.zIndex;
+        for (let i = 0; i < elements.length; i++) {
+            const highlightElement = new HighlightElement(elements.item(i), () => {
+                highlightElement.remove();
 
-            highlighter.style.opacity = "0";
-            setTimeout(() => highlighter.remove(), 300);
-            setTimeout(() => window.dispatchEvent(new Event(this.selector)), this.options?.delay ?? 0);
-        }, { once: true });
+                highlighter.style.opacity = "0";
+                setTimeout(() => highlighter.remove(), 300);
+                setTimeout(() => window.dispatchEvent(new Event(this.selector)), this.options?.delay ?? 0);
+            })
+        }
     }
 
     /**
