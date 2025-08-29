@@ -1,31 +1,15 @@
 import {Anchor, GigaChatChatCompletion, Message, GigaChatConfig} from "../types";
 import {LLMConnector} from "./";
-import { SystemPrompt } from "./SystemPrompt";
 
 /**
  * Класс подключает
  */
 export class GigaChat extends LLMConnector {
     /**
-     * Список якорей системы.
-     * Задаётся посредством вызова сеттера {@link setAnchors}.
-     * @private
-     */
-    anchors: Anchor[] = [];
-
-    /**
      * Access token для авторизации запросов к GigaChat API.
      * @private
      */
     private AccessToken?: string;
-
-    /**
-     * Сеттер переменной {@link anchors}.
-     * @param anchors
-     */
-    setAnchors(anchors: Anchor[]) {
-        this.anchors = anchors;
-    }
 
     /**
      * Функция получает от GigaChat API Access token
@@ -76,7 +60,7 @@ export class GigaChat extends LLMConnector {
             messages: [
                 {
                     role: "system",
-                    content: SystemPrompt(this.anchors)
+                    content: this.systemPrompt
                 },
                 {
                     role: "user",
@@ -102,8 +86,8 @@ export class GigaChat extends LLMConnector {
         return this.parseAnswer(`${data.choices[0]?.message.content}`);
     }
 
-    constructor(private readonly config: GigaChatConfig) {
-        super();
+    constructor(anchors: Anchor[], private readonly config: GigaChatConfig) {
+        super(anchors);
 
         this.accessor();
         setInterval(this.accessor.bind(this), 1000 * 60 * 10);

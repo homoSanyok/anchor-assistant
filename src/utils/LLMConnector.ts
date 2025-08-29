@@ -1,14 +1,22 @@
 import {Anchor, Message} from "../types";
+import {SystemPrompt} from "./SystemPrompt";
 
 /**
  * Класс типизирует методы взаимодействия объекта
  * типа {@link AnchorAssistant} с LLM.
  */
 export abstract class LLMConnector {
-    protected abstract anchors: Anchor[];
+    protected systemPrompt: string;
 
-    abstract setAnchors(anchors: Anchor[]): void;
     abstract send(message: Message): Promise<Message>;
+
+    /**
+     * Сеттер переменной {@link anchors}.
+     * @param anchors
+     */
+    setAnchors(anchors: Anchor[]) {
+        this.systemPrompt = SystemPrompt(anchors);
+    };
 
     /**
      * Функция парсит ответ LLM в Message
@@ -32,5 +40,9 @@ export abstract class LLMConnector {
         };
 
         return message;
+    }
+
+    constructor(anchors: Anchor[]) {
+        this.systemPrompt = SystemPrompt(anchors);
     }
 }
