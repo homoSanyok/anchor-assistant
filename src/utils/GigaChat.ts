@@ -1,17 +1,32 @@
 import {LLMConnector} from "./LLMConnector";
-import {GigaChatChatCompletion, Message} from "../types";
+import {Anchor, GigaChatChatCompletion, Message} from "../types";
 import {GigaChatConfig} from "../types";
-import {SystemMessage} from "../constants";
+import {SystemPrompt} from "./SystemPrompt";
 
 /**
  * Класс подключает
  */
 export class GigaChat extends LLMConnector {
     /**
+     * Список якорей системы.
+     * Задаётся посредством вызова сеттера {@link setAnchors}.
+     * @private
+     */
+    anchors: Anchor[] = [];
+
+    /**
      * Access token для авторизации запросов к GigaChat API.
      * @private
      */
     private AccessToken?: string;
+
+    /**
+     * Сеттер переменной {@link anchors}.
+     * @param anchors
+     */
+    setAnchors(anchors: Anchor[]) {
+        this.anchors = anchors;
+    }
 
     /**
      * Функция получает от GigaChat API Access token
@@ -62,7 +77,7 @@ export class GigaChat extends LLMConnector {
             messages: [
                 {
                     role: "system",
-                    content: SystemMessage
+                    content: SystemPrompt(this.anchors)
                 },
                 {
                     role: "user",
@@ -78,20 +93,14 @@ export class GigaChat extends LLMConnector {
         });
 
         if (!response.ok) {
-            console.log(response.statusText);
             return {
                 from: "llm",
                 text: "Ошибка отправки запроса в GigaChat!"
             };
         }
 
-        const data = await response.json();
-        console.log(data);
-
-        return {
-            from: "llm",
-            text: `${data}`
-        };
+        const data: { choices: { message: { content: string } }[] } = await response.json();
+        return this.parseAnswer(`${data.choices[0]?.message.content}`);
     }
 
     constructor(private readonly config: GigaChatConfig) {

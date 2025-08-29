@@ -1,2 +1,3 @@
 export * from "./AnchorAssistant";
-export * from "./utils";
+export * from "./utils/GigaChat";
+export * from "./types/Anchor";

@@ -13,5 +13,5 @@ export interface Message {
     /**
      * Если инициатор сообщения llm, задаётся список ссылок, который она нашла.
      */
-    links?: string[];
+    selectors?: string[];
 }

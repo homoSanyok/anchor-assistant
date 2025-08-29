@@ -2,10 +2,11 @@
  * @module AnchorAssistant
  */
 import {ChatButtonIcon, ChatSendButtonIcon} from "./icons";
-import {Message} from "./types";
+import {Message, SelectorHighlighterOptions} from "./types";
 import {ChatMessageFieldStyle, ChatStyle, ChatButtonStyle, ChatFooterStyle, ChatMessagesStyle} from "./styles";
 import {ChatCloseButtonIcon} from "./icons/ChatCloseButtonIcon";
-import {LLMConnector} from "./utils/LLMConnector";
+import {LLMConnector, SelectorHighlighter} from "./utils";
+import {Anchor} from "./types";
 
 /**
  * Класс `AnchorAssistant`, отображающий кнопку чата,
@@ -251,18 +252,43 @@ export class AnchorAssistant {
 
         input.value = "";
 
-        this.connector.send(message)
-            .then(answer => {
-                this.messages.push(answer);
-                window.dispatchEvent(new Event("messages-update"));
-            });
+        this.highlightSelectors(["#settings-button", "#settings-palette"]);
+        // this.connector.send(message)
+        //     .then(answer => {
+        //         this.messages.push(answer);
+        //         window.dispatchEvent(new Event("messages-update"));
+        //     });
     }
 
     /**
-     * @param parent - родительский контейнер кнопки чата.
-     * Если не указан, родительским считается `body`.
+     * Функция последовательно подсвечивает необходимые области.
+     * По клику на область снимает подсвечивание и выделяет следующую после
+     * выбранной область.
+     *
+     * @param selectors - список селекторов областей.
+     * @private
      */
-    constructor(private readonly connector: LLMConnector, private readonly parent?: HTMLElement) {
+    private highlightSelectors(selectors: string[]) {
+        selectors.forEach(
+            (selector, index) =>
+                new SelectorHighlighter(selector, selectors[index - 1], this.highlighterOptions)
+        );
+    }
+
+    /**
+     * @param connector - экземпляр класса коннектора к LLM.
+     * @param anchors - массив якорей интерфейса.
+     * @param parent - родительский контейнер кнопки чата. Если не указан, родительским считается `body`.
+     * @param highlighterOptions - настройки области подсветки.
+     */
+    constructor(
+        private readonly connector: LLMConnector,
+        private readonly anchors: Anchor[],
+        private readonly parent?: HTMLElement,
+        private readonly highlighterOptions?: SelectorHighlighterOptions
+    ) {
+        this.connector.setAnchors(anchors);
+
         this.initStyles();
 
         this.initChatButton();

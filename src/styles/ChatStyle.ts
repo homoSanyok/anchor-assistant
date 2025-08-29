@@ -24,6 +24,8 @@ export function ChatStyle(className: string) {
                 
                 display: flex;
                 flex-direction: column;
+                
+                font-family: Roboto, "Helvetica Neue", sans-serif;
             }
             
             .${className}.opened {
