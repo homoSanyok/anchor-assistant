@@ -31,6 +31,8 @@
   },
   "files": [
     "dist",
+    "index.d.ts",
+    "src",
     "README.md"
   ]
 }
