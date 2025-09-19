@@ -120,7 +120,6 @@ import { AnchorAssistant } from "anchor-assistant";
 
 new AnchorAssistant(
     connector, 
-    anchors,
     undefined, // Ссылка на родительский элемент для элемента чата.
     {
         delay: 300 // Задержка подсвечивания элементов интерфейса.
@@ -140,7 +139,7 @@ new AnchorAssistant(
 ```ts
 import { GigaChat } from "anchor-assistant";
 
-const connector = new GigaChat({
+const connector = new GigaChat(anchors, {
     accessor_url: "/accessor", // Ссылка на Смену Access Key.
     model_url: "/model", // Ссылка на API взаимодействия с LLM.
 
