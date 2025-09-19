@@ -33,6 +33,16 @@ export class AnchorAssistant {
     private messages: Message[] = [];
 
     /**
+     * Функция хранит список всех сообщений, которые вводил пользователь
+     * в текущей сессии.
+     *
+     * Используется для реализации автоподставления сообщений
+     * по нажатии на клавиши `стрелка вверх` и `стрелка вниз`.
+     * @private
+     */
+    private userMessages: string[] = [];
+
+    /**
      * Объект хранит DOM элемент кнопки вызова чата.
      */
     chatButton?: HTMLButtonElement;
@@ -116,8 +126,36 @@ export class AnchorAssistant {
 
         button.addEventListener("click", () => this.onSendMessage(input));
         window.addEventListener("keydown", event => {
-           if (this.isChatOpen && event.key === "Enter")
-               this.onSendMessage(input);
+           if (this.isChatOpen && event.key === "Enter") this.onSendMessage(input);
+        });
+
+        input.addEventListener("keydown", event => {
+           if (!this.isChatOpen) return;
+
+           switch (event.key) {
+               case "ArrowUp": {
+                   event.preventDefault();
+                   const valueIndex = this.userMessages.indexOf(input.value);
+                   if (valueIndex === -1) {
+                       input.value = this.userMessages.at(-1) || "";
+                       return;
+                   }
+                   input.value = valueIndex - 1 < 0 ? "" : this.userMessages.at(valueIndex - 1) || "";
+                   requestAnimationFrame(() => input.selectionStart = input.value.length);
+                   break;
+               }
+               case "ArrowDown": {
+                   event.preventDefault();
+                   const valueIndex = this.userMessages.indexOf(input.value);
+                   if (valueIndex === -1) {
+                       input.value = this.userMessages.at(0) || "";
+                       return;
+                   }
+                   input.value = this.userMessages.at(valueIndex + 1) || "";
+                   requestAnimationFrame(() => input.selectionStart = input.value.length);
+                   break;
+               }
+           }
         });
     }
 
@@ -176,6 +214,9 @@ export class AnchorAssistant {
 
                 chatMessages.appendChild(messageElement);
             }
+
+            // Автоскроллл в самый низ списка.
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         });
         window.dispatchEvent(new Event("messages-update"));
     }
@@ -250,7 +291,6 @@ export class AnchorAssistant {
 
         input.value = "";
 
-        // this.highlightSelectors(["#settings-button", "#edit-link-button"]);
         this.connector.send(message)
             .then(answer => {
                 this.messages.push(answer);
@@ -258,6 +298,11 @@ export class AnchorAssistant {
 
                 this.highlightSelectors(answer.selectors ?? []);
             });
+
+        // Добавляет в конец userMessages последнее введённое сообщение.
+        // Если такое сообщение уже было, удаляет его из списка и добавляет в конец.
+        this.userMessages = this.userMessages.filter(userMessage => userMessage !== message.text);
+        this.userMessages.push(message.text);
     }
 
     /**
@@ -277,18 +322,14 @@ export class AnchorAssistant {
 
     /**
      * @param connector - экземпляр класса коннектора к LLM.
-     * @param anchors - массив якорей интерфейса.
      * @param parent - родительский контейнер кнопки чата. Если не указан, родительским считается `body`.
      * @param highlighterOptions - настройки области подсветки.
      */
     constructor(
         private readonly connector: LLMConnector,
-        private readonly anchors: Anchor[],
         private readonly parent?: HTMLElement,
         private readonly highlighterOptions?: SelectorHighlighterOptions
     ) {
-        this.connector.setAnchors(this.anchors);
-
         this.initStyles();
 
         this.initChatButton();

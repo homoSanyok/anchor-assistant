@@ -11,14 +11,6 @@ export abstract class LLMConnector {
     abstract send(message: Message): Promise<Message>;
 
     /**
-     * Сеттер переменной {@link anchors}.
-     * @param anchors
-     */
-    setAnchors(anchors: Anchor[]) {
-        this.systemPrompt = SystemPrompt(anchors);
-    };
-
-    /**
      * Функция парсит ответ LLM в Message
      * @param answer
      * @protected
