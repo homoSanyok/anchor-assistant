@@ -2,7 +2,7 @@
  * @module AnchorAssistant
  */
 import {ChatButtonIcon, ChatSendButtonIcon, ChatCloseButtonIcon} from "./icons";
-import {Message, SelectorHighlighterOptions, Anchor} from "./types";
+import {Message, SelectorHighlighterOptions} from "./types";
 import {ChatMessageFieldStyle, ChatStyle, ChatButtonStyle, ChatFooterStyle, ChatMessagesStyle} from "./styles";
 import {LLMConnector, SelectorHighlighter} from "./utils";
 
@@ -28,19 +28,17 @@ export class AnchorAssistant {
 
     /**
      * Хранит список сообщений {@link Message} текущей сессии.
+     * В список сообщений входят пользовательские запросы и ответы LLM.
      * @private
      */
     private messages: Message[] = [];
 
     /**
-     * Функция хранит список всех сообщений, которые вводил пользователь
-     * в текущей сессии.
-     *
-     * Используется для реализации автоподставления сообщений
-     * по нажатии на клавиши `стрелка вверх` и `стрелка вниз`.
+     * Хранит список выбранных селекторов DOM объектов.
+     * Если пользователь выбирал оин из селекторов, переданных в конструктор класса
      * @private
      */
-    private userMessages: string[] = [];
+    private selectedSelectors: string[] = [];
 
     /**
      * Объект хранит DOM элемент кнопки вызова чата.
@@ -126,36 +124,40 @@ export class AnchorAssistant {
 
         button.addEventListener("click", () => this.onSendMessage(input));
         window.addEventListener("keydown", event => {
-           if (this.isChatOpen && event.key === "Enter") this.onSendMessage(input);
+            if (this.isChatOpen && event.key === "Enter") this.onSendMessage(input);
         });
 
         input.addEventListener("keydown", event => {
-           if (!this.isChatOpen) return;
+            const userMessages = this.messages
+                .filter(message => message.from === "user")
+                .map(message => message.text);
 
-           switch (event.key) {
-               case "ArrowUp": {
-                   event.preventDefault();
-                   const valueIndex = this.userMessages.indexOf(input.value);
-                   if (valueIndex === -1) {
-                       input.value = this.userMessages.at(-1) || "";
-                       return;
-                   }
-                   input.value = valueIndex - 1 < 0 ? "" : this.userMessages.at(valueIndex - 1) || "";
-                   requestAnimationFrame(() => input.selectionStart = input.value.length);
-                   break;
-               }
-               case "ArrowDown": {
-                   event.preventDefault();
-                   const valueIndex = this.userMessages.indexOf(input.value);
-                   if (valueIndex === -1) {
-                       input.value = this.userMessages.at(0) || "";
-                       return;
-                   }
-                   input.value = this.userMessages.at(valueIndex + 1) || "";
-                   requestAnimationFrame(() => input.selectionStart = input.value.length);
-                   break;
-               }
-           }
+            if (!this.isChatOpen) return;
+
+            switch (event.key) {
+                case "ArrowUp": {
+                    event.preventDefault();
+                    const valueIndex = userMessages.indexOf(input.value);
+                    if (valueIndex === -1) {
+                        input.value = userMessages.at(-1) || "";
+                        return;
+                    }
+                    input.value = valueIndex - 1 < 0 ? "" : userMessages.at(valueIndex - 1) || "";
+                    requestAnimationFrame(() => input.selectionStart = input.value.length);
+                    break;
+                }
+                case "ArrowDown": {
+                    event.preventDefault();
+                    const valueIndex = userMessages.indexOf(input.value);
+                    if (valueIndex === -1) {
+                        input.value = userMessages.at(0) || "";
+                        return;
+                    }
+                    input.value = userMessages.at(valueIndex + 1) || "";
+                    requestAnimationFrame(() => input.selectionStart = input.value.length);
+                    break;
+                }
+            }
         });
     }
 
@@ -296,13 +298,33 @@ export class AnchorAssistant {
                 this.messages.push(answer);
                 window.dispatchEvent(new Event("messages-update"));
 
-                this.highlightSelectors(answer.selectors ?? []);
+                const filteredSelectors = answer.selectors?.filter(selector => this.selectedSelectors.indexOf(selector) === -1);
+                this.highlightSelectors(filteredSelectors || []);
             });
+    }
 
-        // Добавляет в конец userMessages последнее введённое сообщение.
-        // Если такое сообщение уже было, удаляет его из списка и добавляет в конец.
-        this.userMessages = this.userMessages.filter(userMessage => userMessage !== message.text);
-        this.userMessages.push(message.text);
+    /**
+     * Функция инициализирует обработчик выбора пользователем селекторов, переданных
+     * в коннекторе {@link connector}.
+     *
+     * Если до этого селектор не был выбран, он добавляется в список {@link selectedSelectors}.
+     * Если был выбран, удаляется из списка.
+     * @private
+     */
+    private initSelectorsSelectHandler() {
+        const selectors = this.connector.getAnchors()
+            .map(anchor => anchor.selector);
+
+        selectors.forEach((selector) => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(element => element.addEventListener("click", () => {
+                if (this.selectedSelectors.indexOf(selector) !== -1) {
+                    this.selectedSelectors = this.selectedSelectors.filter(s => s !== selector);
+                    return;
+                }
+                this.selectedSelectors.push(selector);
+            }));
+        });
     }
 
     /**
@@ -338,6 +360,7 @@ export class AnchorAssistant {
         this.initChatMessages();
         this.initChatMessageField();
 
+        setTimeout(this.initSelectorsSelectHandler.bind(this), 0);
         this.renderElements();
     }
 }

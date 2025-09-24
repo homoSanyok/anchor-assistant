@@ -25,16 +25,18 @@ export abstract class LLMConnector {
         }
 
         links = links.replaceAll(' ', '');
-        const message: Message = {
+        return {
             from: "llm",
             text: text,
             selectors: links.split(",")
         };
-
-        return message;
     }
 
-    constructor(anchors: Anchor[]) {
+    getAnchors() {
+        return this.anchors;
+    }
+
+    constructor(private readonly anchors: Anchor[]) {
         this.systemPrompt = SystemPrompt(anchors);
     }
 }
