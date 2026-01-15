@@ -7,6 +7,7 @@ const SystemPrompt_1 = require("./SystemPrompt");
  * типа {@link AnchorAssistant} с LLM.
  */
 class LLMConnector {
+    anchors;
     systemPrompt;
     /**
      * Функция парсит ответ LLM в Message
@@ -22,14 +23,17 @@ class LLMConnector {
             };
         }
         links = links.replaceAll(' ', '');
-        const message = {
+        return {
             from: "llm",
             text: text,
             selectors: links.split(",")
         };
-        return message;
+    }
+    getAnchors() {
+        return this.anchors;
     }
     constructor(anchors) {
+        this.anchors = anchors;
         this.systemPrompt = (0, SystemPrompt_1.SystemPrompt)(anchors);
     }
 }

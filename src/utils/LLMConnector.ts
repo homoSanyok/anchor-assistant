@@ -8,6 +8,11 @@ import {SystemPrompt} from "./SystemPrompt";
 export abstract class LLMConnector {
     protected systemPrompt: string;
 
+    /**
+     * функция отправляет пользовательский запрос в LLM и
+     * возвращает Promise с ответом LLM.
+     * @param message
+     */
     abstract send(message: Message): Promise<Message>;
 
     /**

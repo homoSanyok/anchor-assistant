@@ -4,6 +4,7 @@ import { SystemPrompt } from "./SystemPrompt";
  * типа {@link AnchorAssistant} с LLM.
  */
 export class LLMConnector {
+    anchors;
     systemPrompt;
     /**
      * Функция парсит ответ LLM в Message
@@ -19,14 +20,17 @@ export class LLMConnector {
             };
         }
         links = links.replaceAll(' ', '');
-        const message = {
+        return {
             from: "llm",
             text: text,
             selectors: links.split(",")
         };
-        return message;
+    }
+    getAnchors() {
+        return this.anchors;
     }
     constructor(anchors) {
+        this.anchors = anchors;
         this.systemPrompt = SystemPrompt(anchors);
     }
 }

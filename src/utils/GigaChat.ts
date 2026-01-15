@@ -40,6 +40,7 @@ export class GigaChat extends LLMConnector {
         this.AccessToken = data.access_token;
     }
 
+    /** @inheritDoc */
     async send(message: Message): Promise<Message> {
         if (!this.AccessToken) return {
             from: "llm",

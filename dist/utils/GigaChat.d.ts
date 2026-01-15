@@ -17,6 +17,7 @@ export declare class GigaChat extends LLMConnector {
      * @private
      */
     private accessor;
+    /** @inheritDoc */
     send(message: Message): Promise<Message>;
     constructor(anchors: Anchor[], config: GigaChatConfig);
 }
