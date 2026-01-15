@@ -1,5 +1,6 @@
 // generate-dataset.ts
-import { writeFileSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { join } from 'path';
 import { Anchor } from "../src/index";
 
 // Типы
@@ -16,104 +17,41 @@ const CONFIG = {
     valSplit: 0.15,
     testSplit: 0.15,
     
-    domains: ['ecommerce', 'dashboard', 'social', 'admin', 'analytics', 'crm', 'education'] as const,
-    
     // Распределение типов примеров
     exampleTypes: {
-        exactMatch: 0.25,
-        synonymMatch: 0.20,
-        partialMatch: 0.15,
-        hierarchical: 0.25,
-        notFound: 0.10,
-        ambiguous: 0.05
+        exactMatch: 0.4,
+        partialMatch: 0.3,
+        notFound: 0.2,
+        ambiguous: 0.1
     }
 };
 
-// Многословные описания для разных категорий
-const DESCRIPTIONS = {
-    settings: [
-        'настройка параметров безопасности и приватности учетной записи пользователя с возможностью двухфакторной аутентификации',
-        'конфигурация системных параметров и предпочтений интерфейса с сохранением пользовательских пресетов',
-        'управление настройками уведомлений и оповещений приложения для различных типов событий',
-        'изменение региональных параметров, языковых настроек и форматов отображения даты и времени',
-        'настройка внешнего вида, темы оформления и расположения элементов пользовательского интерфейса',
-        'управление правами доступа и разрешениями для различных ролей пользователей в системе',
-        'конфигурация параметров интеграции с внешними сервисами и API сторонних приложений'
-    ],
-    profile: [
-        'управление личной информацией, контактными данными и аватаркой учетной записи пользователя',
-        'редактирование профиля, настроек видимости и параметров отображения персональной информации',
-        'просмотр истории действий, активности и последних операций пользователя в системе',
-        'управление подписками, уведомлениями и настройками рассылок для профиля пользователя',
-        'настройка параметров конфиденциальности, видимости профиля и управления персональными данными',
-        'привязка и управление дополнительными способами аутентификации и социальными аккаунтами',
-        'ведение списка избранного, сохраненных элементов и персональных коллекций пользователя'
-    ],
-    analytics: [
-        'анализ статистики использования, метрик производительности и ключевых показателей эффективности системы',
-        'просмотр интерактивных отчетов, дашбордов и визуализаций с детализацией по различным параметрам',
-        'мониторинг пользовательской активности, поведения и паттернов взаимодействия с приложением',
-        'анализ трендов, динамики изменений и прогнозирование метрик использования функциональности',
-        'генерация детализированных отчетов с возможностью фильтрации, группировки и экспорта данных',
-        'сравнение показателей за различные периоды времени с анализом роста и выявлением аномалий',
-        'интеграция аналитических данных с системами бизнес-аналитики и внешними инструментами отчетности'
-    ],
-    admin: [
-        'администрирование пользователей, управление ролями, правами доступа и уровнями привилегий в системе',
-        'мониторинг системных логов, диагностика проблем производительности и устранение ошибок работы',
-        'управление конфигурацией системы, параметрами развертывания и настройками окружения выполнения',
-        'контроль безопасности системы, аудит действий пользователей и мониторинг подозрительной активности',
-        'управление резервным копированием, восстановлением данных и планированием задач обслуживания',
-        'конфигурация системных уведомлений, оповещений администратора и мониторинга критических событий',
-        'управление лицензиями, подписками и биллингом для корпоративных пользователей и организаций'
-    ],
-    content: [
-        'управление контентом, медиафайлами, документами и мультимедийными материалами в системе',
-        'создание, редактирование, форматирование и публикация текстовых материалов, статей и документов',
-        'организация контента по категориям, тегам, коллекциям и иерархическим структурам навигации',
-        'модерация пользовательского контента, комментариев, отзывов и пользовательских материалов',
-        'публикация, планирование выхода, управление версиями и история изменений контентных материалов',
-        'оптимизация контента для поисковых систем, управление метаданными и SEO-параметрами',
-        'анализ эффективности контента, вовлеченности пользователей и метрик взаимодействия с материалами'
-    ],
-    catalog: [
-        'управление каталогом товаров, услуг, продуктов и позиций с детализированными характеристиками',
-        'организация товаров по категориям, подкатегориям, коллекциям и тематическим разделам',
-        'управление наличием товаров, остатками на складах и параметрами инвентаризации продукции',
-        'настройка фильтров, сортировки, поиска и параметров отображения элементов каталога',
-        'управление ценами, скидками, акциями и специальными предложениями для товаров каталога',
-        'интеграция каталога с системами управления запасами, логистики и цепочками поставок',
-        'анализ эффективности каталога, конверсии просмотров в покупки и популярности товарных позиций'
-    ]
-};
+// Создание папки если её нет
+function ensureDataDirectory() {
+    const dataDir = join(__dirname, 'data');
+    if (!existsSync(dataDir)) {
+        mkdirSync(dataDir, { recursive: true });
+    }
+    return dataDir;
+}
 
-// Синонимы для ключевых слов
-const SYNONYMS: Record<string, string[]> = {
-    'настройки': ['параметры', 'конфигурация', 'опции', 'установки', 'предпочтения'],
-    'профиль': ['аккаунт', 'учетная запись', 'личный кабинет', 'персональная страница'],
-    'отчеты': ['аналитика', 'статистика', 'метрики', 'дашборд', 'мониторинг'],
-    'пользователи': ['клиенты', 'юзеры', 'аккаунты', 'участники', 'пользватели'],
-    'безопасность': ['защита', 'приватность', 'конфиденциальность', 'аутентификация'],
-    'уведомления': ['оповещения', 'алерты', 'сообщения', 'уведомления', 'нотификации'],
-    'помощь': ['поддержка', 'справка', 'документация', 'FAQ', 'помощь'],
-    'поиск': ['фильтр', 'поисковая строка', 'найти', 'поиск', 'фильтрация'],
-    'редактировать': ['изменить', 'обновить', 'модифицировать', 'корректировать'],
-    'создать': ['добавить', 'новый', 'сгенерировать', 'создать', 'добавить'],
-    'управление': ['администрирование', 'контроль', 'руководство', 'управление'],
-    'каталог': ['товары', 'продукты', 'позиции', 'ассортимент', 'каталог'],
-    'анализ': ['аналитика', 'исследование', 'изучение', 'разбор', 'анализ']
-};
+// Генерация случайного числа в диапазоне
+function randomInt(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
-// Утилиты для работы с массивами
+// Выбор случайного элемента из массива
 function sample<T>(array: T[]): T {
     return array[Math.floor(Math.random() * array.length)];
 }
 
+// Выбор нескольких случайных элементов из массива
 function sampleSize<T>(array: T[], n: number): T[] {
     const shuffled = [...array].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, n);
 }
 
+// Перемешивание массива
 function shuffle<T>(array: T[]): T[] {
     const newArray = [...array];
     for (let i = newArray.length - 1; i > 0; i--) {
@@ -123,248 +61,221 @@ function shuffle<T>(array: T[]): T[] {
     return newArray;
 }
 
-function randomInt(min: number, max: number): number {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-// Генерация многословного описания
-function generateMultiWordDescription(category: keyof typeof DESCRIPTIONS): string {
-    return sample(DESCRIPTIONS[category]);
-}
-
-// Генерация плоского списка якорей для домена
-function generateFlatAnchors(domain: string): Anchor[] {
+// Создание случайных анкоров
+function generateRandomAnchors(count: number = 15): Anchor[] {
     const anchors: Anchor[] = [];
-    const selectorCounter: Record<string, number> = {};
     
-    // Определяем категории для домена
-    let categories: (keyof typeof DESCRIPTIONS)[] = [];
-    switch (domain) {
-        case 'ecommerce':
-            categories = ['settings', 'profile', 'catalog', 'analytics'];
-            break;
-        case 'dashboard':
-            categories = ['settings', 'analytics', 'admin'];
-            break;
-        case 'social':
-            categories = ['profile', 'settings', 'content'];
-            break;
-        case 'admin':
-            categories = ['admin', 'settings', 'analytics'];
-            break;
-        case 'analytics':
-            categories = ['analytics', 'settings'];
-            break;
-        case 'crm':
-            categories = ['profile', 'analytics', 'admin'];
-            break;
-        case 'education':
-            categories = ['content', 'profile', 'settings'];
-            break;
-        default:
-            categories = ['settings', 'profile'];
-    }
+    // Базовые элементы (корневые)
+    const rootAnchors = [
+        { selector: '#settings', anchor: 'настройки, параметры приложения, конфигурация', parent_selector: 'root' },
+        { selector: '#profile', anchor: 'профиль, личный кабинет, учетная запись', parent_selector: 'root' },
+        { selector: '#analytics', anchor: 'аналитика, статистика, отчеты', parent_selector: 'root' },
+        { selector: '#help', anchor: 'помощь, справка, документация', parent_selector: 'root' },
+        { selector: '#catalog', anchor: 'каталог, товары, продукты', parent_selector: 'root' },
+        { selector: '#messages', anchor: 'сообщения, чат, переписка', parent_selector: 'root' },
+        { selector: '#dashboard', anchor: 'дашборд, главная страница, обзор', parent_selector: 'root' }
+    ];
     
-    // Генерация корневых якорей
-    const rootCount = randomInt(4, 7);
-    const rootCategories = sampleSize(categories, rootCount);
-    
-    rootCategories.forEach((category, index) => {
-        const selector = `#root-${category}-${index + 1}`;
-        const description = generateMultiWordDescription(category);
-        
+    // Добавляем корневые анкоры
+    const selectedRoots = sampleSize(rootAnchors, randomInt(3, 6));
+    selectedRoots.forEach(root => {
         anchors.push({
-            selector,
-            anchor: description.charAt(0).toUpperCase() + description.slice(1),
-            parent_selector: 'root'
+            selector: root.selector,
+            anchor: root.anchor,
+            parent_selector: root.parent_selector
         });
+    });
+    
+    // Создаем вложенные анкоры
+    const rootSelectors = selectedRoots.map(r => r.selector);
+    
+    rootSelectors.forEach(parentSelector => {
+        const childCount = randomInt(1, 4);
         
-        selectorCounter[selector] = 1;
-    });
-    
-    // Генерация вложенных якорей (уровень 1)
-    anchors.forEach(rootAnchor => {
-        if (Math.random() > 0.3) { // 70% корневых имеют детей
-            const childCount = randomInt(2, 5);
-            const category = Object.keys(DESCRIPTIONS).find(key => 
-                rootAnchor.anchor.toLowerCase().includes(key)
-            ) as keyof typeof DESCRIPTIONS || 'settings';
+        for (let i = 1; i <= childCount; i++) {
+            const childSelectors = [
+                { selector: `${parentSelector.replace('#', '')}-button`, anchor: 'кнопка, нажать, кликнуть' },
+                { selector: `${parentSelector.replace('#', '')}-edit`, anchor: 'редактировать, изменить, обновить' },
+                { selector: `${parentSelector.replace('#', '')}-add`, anchor: 'добавить, создать, новый' },
+                { selector: `${parentSelector.replace('#', '')}-delete`, anchor: 'удалить, стереть, убрать' },
+                { selector: `${parentSelector.replace('#', '')}-view`, anchor: 'просмотреть, посмотреть, открыть' },
+                { selector: `${parentSelector.replace('#', '')}-settings`, anchor: 'настройки, параметры, конфигурация' },
+                { selector: `${parentSelector.replace('#', '')}-export`, anchor: 'экспорт, выгрузить, скачать' },
+                { selector: `${parentSelector.replace('#', '')}-import`, anchor: 'импорт, загрузить, добавить из файла' },
+                { selector: `${parentSelector.replace('#', '')}-filter`, anchor: 'фильтр, отфильтровать, поиск' },
+                { selector: `${parentSelector.replace('#', '')}-sort`, anchor: 'сортировка, упорядочить, организовать' }
+            ];
             
-            for (let i = 0; i < childCount; i++) {
-                const childSelector = `#${rootAnchor.selector.slice(1)}-child-${i + 1}`;
-                const description = generateMultiWordDescription(category);
-                
-                anchors.push({
-                    selector: childSelector,
-                    anchor: `Подраздел: ${description.toLowerCase()}`,
-                    parent_selector: rootAnchor.selector
-                });
-                
-                selectorCounter[childSelector] = 2;
-            }
-        }
-    });
-    
-    // Генерация глубоко вложенных якорей (уровень 2)
-    const level1Anchors = anchors.filter(a => selectorCounter[a.selector] === 2);
-    level1Anchors.forEach(parentAnchor => {
-        if (Math.random() > 0.5) { // 50% имеют детей
-            const grandChildCount = randomInt(1, 3);
+            const selectedChild = sample(childSelectors);
+            anchors.push({
+                selector: `#${selectedChild.selector}`,
+                anchor: `${getActionForParent(parentSelector)} ${selectedChild.anchor}`,
+                parent_selector: parentSelector
+            });
             
-            for (let i = 0; i < grandChildCount; i++) {
-                const grandChildSelector = `#${parentAnchor.selector.slice(1)}-grandchild-${i + 1}`;
-                const actionTypes = [
-                    'Настройка параметров',
-                    'Просмотр статистики',
-                    'Управление элементами',
-                    'Редактирование контента',
-                    'Экспорт данных',
-                    'Импорт файлов',
-                    'Фильтрация результатов',
-                    'Сортировка элементов'
+            // Создаем еще один уровень вложенности (с вероятностью 50%)
+            if (Math.random() > 0.5) {
+                const grandChildSelectors = [
+                    { action: 'fast', desc: 'быстро, скоро, моментально' },
+                    { action: 'detailed', desc: 'подробно, детально, с деталями' },
+                    { action: 'multiple', desc: 'множественно, несколько, много' },
+                    { action: 'favorite', desc: 'избранное, любимое, сохраненное' },
+                    { action: 'template', desc: 'шаблон, заготовка, пресет' }
                 ];
                 
+                const grandChild = sample(grandChildSelectors);
                 anchors.push({
-                    selector: grandChildSelector,
-                    anchor: `${sample(actionTypes)}: ${parentAnchor.anchor.split(':')[1]?.trim() || 'элементов'}`,
-                    parent_selector: parentAnchor.selector
+                    selector: `#${selectedChild.selector}-${grandChild.action}`,
+                    anchor: `${grandChild.desc} ${selectedChild.anchor}`,
+                    parent_selector: `#${selectedChild.selector}`
                 });
             }
         }
     });
     
-    // Добавляем несколько изолированных якорей без родителей
-    const isolatedCount = randomInt(2, 4);
+    // Добавляем несколько изолированных элементов
+    const isolatedCount = randomInt(1, 3);
     for (let i = 0; i < isolatedCount; i++) {
-        const isolatedCategory = sample(categories);
         anchors.push({
-            selector: `#isolated-${isolatedCategory}-${i + 1}`,
-            anchor: generateMultiWordDescription(isolatedCategory),
+            selector: `#isolated-${i + 1}`,
+            anchor: `изолированный элемент ${i + 1}, отдельный раздел`,
             parent_selector: 'root'
         });
     }
     
-    return anchors;
+    return anchors.slice(0, count);
 }
 
-// Поиск пути в плоском списке
-function findPathInFlatList(selector: string, anchors: Anchor[]): Anchor[] {
+// Получение действия для родительского элемента
+function getActionForParent(parentSelector: string): string {
+    if (parentSelector === '#settings') return 'настроить';
+    if (parentSelector === '#profile') return 'управлять профилем';
+    if (parentSelector === '#analytics') return 'просмотреть аналитику';
+    if (parentSelector === '#catalog') return 'управлять каталогом';
+    if (parentSelector === '#messages') return 'отправить сообщение';
+    if (parentSelector === '#dashboard') return 'настроить дашборд';
+    return 'управлять';
+}
+
+// Форматирование анкоров для input
+function formatAnchors(anchors: Anchor[]): string {
+    return anchors.map(a => 
+        `{ selector: "${a.selector}", anchor: "${a.anchor}", parent_selector: "${a.parent_selector}" }`
+    ).join(', ');
+}
+
+// Поиск пути к элементу
+function findPath(selector: string, anchors: Anchor[]): Anchor[] {
     const path: Anchor[] = [];
     const anchorMap = new Map(anchors.map(a => [a.selector, a]));
     
-    let currentSelector = selector;
-    let visited = new Set<string>();
+    let current = selector;
     
-    while (currentSelector && currentSelector !== 'root' && !visited.has(currentSelector)) {
-        const anchor = anchorMap.get(currentSelector);
+    while (current && current !== 'root') {
+        const anchor = anchorMap.get(current);
         if (!anchor) break;
         
-        visited.add(currentSelector);
         path.unshift(anchor);
-        currentSelector = anchor.parent_selector;
+        current = anchor.parent_selector;
     }
     
     return path;
 }
 
-// Форматирование якорей для input
-function formatAnchorsFlat(anchors: Anchor[]): string {
-    return `Якоря:\n${anchors.map(a => `- ${a.selector} - ${a.anchor} - ${a.parent_selector}`).join('\n')}`;
+// Получение краткого описания из анкора
+function getShortDescription(anchor: string): string {
+    // Проверяем, что anchor существует и является строкой
+    if (!anchor || typeof anchor !== 'string') {
+        return 'элемент';
+    }
+    // Берем первую часть до запятой
+    const firstPart = anchor.split(',')[0];
+    return firstPart ? firstPart.trim() : 'элемент';
 }
 
 // Форматирование ответа
-function formatResponse(path: Anchor[], contextAnchors: Anchor[], intent: string): string {
-    if (intent === 'notFound' || path.length === 0) {
-        return 'not_found. Извините, раздел не найден.';
+function formatResponse(path: Anchor[]): string {
+    if (path.length === 0) {
+        return "not_found. Извините, раздел не найден.";
     }
     
     const selectors = path.map(a => a.selector).join(', ');
-    const descriptions = path.map(a => {
-        // Упрощаем описание для краткости
-        const shortDesc = a.anchor.split(':')[0] || a.anchor;
-        return shortDesc.length > 30 ? shortDesc.substring(0, 30) + '...' : shortDesc;
-    }).join(' → ');
+    const descriptions = path.map(a => getShortDescription(a.anchor)).join(' → ');
     
     return `${selectors}. ${descriptions}.`;
 }
 
-// Генерация запроса
-function generateQuery(anchor: Anchor, queryType: keyof typeof CONFIG.exampleTypes): string {
-    const baseDescription = anchor.anchor.toLowerCase();
+// Генерация запроса для анкора
+function generateQueryForAnchor(anchor: Anchor | null, queryType: string): string {
+    const queries = {
+        exactMatch: [
+            'Найди настройки безопасности',
+            'Где находится профиль пользователя?',
+            'Покажи мне аналитику продаж',
+            'Открой раздел помощи',
+            'Как найти каталог товаров?',
+            'Мне нужен доступ к сообщениям',
+            'Перейди в дашборд',
+            'Где искать настройки уведомлений?',
+            'Покажи меню редактирования профиля',
+            'Где можно изменить пароль?'
+        ],
+        partialMatch: [
+            'Найди раздел с настройками',
+            'Где можно изменить параметры?',
+            'Покажи меню редактирования',
+            'Как добавить новый элемент?',
+            'Где находится управление?',
+            'Покажи опции',
+            'Как получить доступ к настройкам?',
+            'Где редактировать профиль?',
+            'Найди статистику',
+            'Покажи отчеты'
+        ],
+        ambiguous: [
+            'Настройки',
+            'Редактировать',
+            'Добавить',
+            'Удалить',
+            'Просмотреть',
+            'Экспорт',
+            'Импорт',
+            'Фильтр',
+            'Статистика',
+            'Профиль'
+        ],
+        notFound: [
+            'Найди игровую панель',
+            'Где находится музыкальный плеер?',
+            'Покажи мне прогноз погоды',
+            'Открой видеоконференции',
+            'Как найти криптокошелек?',
+            'Мне нужен доступ к календарю',
+            'Где искать голосового помощника?',
+            'Покажи раздел с картами',
+            'Найди калькулятор',
+            'Где редактор фото?'
+        ]
+    };
     
-    switch (queryType) {
-        case 'exactMatch':
-            const exactTemplates = [
-                `Найди "${anchor.anchor}"`,
-                `Как перейти к ${baseDescription}?`,
-                `Открой раздел "${anchor.anchor}"`,
-                `Покажи мне ${baseDescription}`,
-                `Где находится ${baseDescription}?`
-            ];
-            return sample(exactTemplates);
-            
-        case 'synonymMatch':
-            // Ищем синонимы в описании
-            for (const [keyword, synonyms] of Object.entries(SYNONYMS)) {
-                if (baseDescription.includes(keyword)) {
-                    const synonym = sample(synonyms);
-                    const synonymTemplates = [
-                        `Где можно найти ${synonym}?`,
-                        `Покажи раздел с ${synonym}`,
-                        `Как получить доступ к ${synonym}?`,
-                        `Мне нужен ${synonym}`,
-                        `Открой ${synonym}`
-                    ];
-                    return sample(synonymTemplates);
-                }
-            }
-            // Если не нашли синоним, используем exact match
-            return generateQuery(anchor, 'exactMatch');
-            
-        case 'partialMatch':
-            const words = anchor.anchor.split(' ');
-            if (words.length <= 2) {
-                return generateQuery(anchor, 'exactMatch');
-            }
-            const partialWords = words.slice(0, randomInt(1, Math.min(3, words.length - 1)));
-            const partialDescription = partialWords.join(' ');
-            const partialTemplates = [
-                `Как найти ${partialDescription.toLowerCase()}?`,
-                `Где искать ${partialDescription.toLowerCase()}?`,
-                `Покажи ${partialDescription.toLowerCase()}`,
-                `Мне нужен доступ к ${partialDescription.toLowerCase()}`,
-                `Как перейти в ${partialDescription.toLowerCase()}?`
-            ];
-            return sample(partialTemplates);
-            
-        case 'hierarchical':
-            const path = findPathInFlatList(anchor.selector, [anchor]);
-            if (path.length <= 1) {
-                return generateQuery(anchor, 'exactMatch');
-            }
-            const hierarchicalTemplates = [
-                `Как добраться до ${baseDescription}?`,
-                `Проведи меня в ${baseDescription}`,
-                `Покажи полный путь к ${baseDescription}`,
-                `Мне нужно найти ${baseDescription}, как туда попасть?`,
-                `Навигация к ${baseDescription}`
-            ];
-            return sample(hierarchicalTemplates);
-            
-        case 'ambiguous':
-            const firstWord = anchor.anchor.split(' ')[0].toLowerCase();
-            const ambiguousTemplates = [
-                `Покажи ${firstWord}`,
-                `Где ${firstWord}?`,
-                `Найди ${firstWord}`,
-                `Открой ${firstWord}`,
-                `Мне нужен ${firstWord}`
-            ];
-            return sample(ambiguousTemplates);
-            
-        default:
-            return `Найди ${baseDescription}`;
+    // Для exactMatch используем anchor, если он есть
+    if (queryType === 'exactMatch' && anchor && anchor.anchor) {
+        const shortDesc = getShortDescription(anchor.anchor);
+        const exactQueries = [
+            `Найди "${shortDesc}"`,
+            `Где находится ${shortDesc}?`,
+            `Покажи мне ${shortDesc}`,
+            `Открой ${shortDesc}`,
+            `Как найти ${shortDesc}?`,
+            `Мне нужен доступ к ${shortDesc}`,
+            `Перейди в ${shortDesc}`,
+            `Где искать ${shortDesc}?`
+        ];
+        return sample(exactQueries);
     }
+    
+    // Для других типов берем из предопределенных запросов
+    return sample(queries[queryType as keyof typeof queries] || queries.exactMatch);
 }
 
 // Взвешенный случайный выбор
@@ -382,69 +293,64 @@ function weightedRandom(weights: Record<string, number>): string {
 }
 
 // Генерация одного примера
-function generateExample(anchors: Anchor[], exampleType: string): TrainingExample {
-    if (exampleType === 'notFound') {
-        const contextAnchors = sampleSize(anchors, randomInt(5, 12));
-        const unrelatedTerms = [
-            'голосовой помощник', 'игровой раздел', 'криптовалютный кошелек',
-            'прогноз погоды', 'лента новостей', 'видеоконференции',
-            'калькулятор', 'календарь событий', 'карта местности'
-        ];
-        
+function generateExample(): TrainingExample {
+    // Генерируем случайные анкоры
+    const anchors = generateRandomAnchors(randomInt(8, 20));
+    
+    // Выбираем тип запроса
+    const queryType = weightedRandom(CONFIG.exampleTypes);
+    
+    if (queryType === 'notFound') {
         return {
-            instruction: `Найди ${sample(unrelatedTerms)}`,
-            input: formatAnchorsFlat(contextAnchors),
-            output: 'not_found. Извините, раздел не найден.'
+            instruction: generateQueryForAnchor(null, 'notFound'),
+            input: formatAnchors(anchors),
+            output: "not_found. Извините, раздел не найден."
         };
     }
     
-    // Выбираем случайный якорь
-    const anchor = sample(anchors);
-    const path = findPathInFlatList(anchor.selector, anchors);
+    // Выбираем случайный анкор
+    const targetAnchor = sample(anchors);
     
-    // Выбираем контекстные якоря (включая путь и случайные)
-    const pathSelectors = new Set(path.map(a => a.selector));
-    const contextFromPath = anchors.filter(a => pathSelectors.has(a.selector));
-    const remaining = anchors.filter(a => !pathSelectors.has(a.selector));
-    const additionalContext = sampleSize(remaining, randomInt(3, 8));
-    const contextAnchors = shuffle([...contextFromPath, ...additionalContext]).slice(0, randomInt(5, 15));
+    // Находим путь к целевому анкору
+    const path = findPath(targetAnchor.selector, anchors);
     
-    const query = generateQuery(anchor, exampleType as any);
+    // Проверяем, найден ли путь
+    if (path.length === 0) {
+        // Если путь не найден, считаем это not_found
+        return {
+            instruction: generateQueryForAnchor(null, 'notFound'),
+            input: formatAnchors(anchors),
+            output: "not_found. Извините, раздел не найден."
+        };
+    }
     
     return {
-        instruction: query,
-        input: formatAnchorsFlat(contextAnchors),
-        output: formatResponse(path, contextAnchors, exampleType)
+        instruction: generateQueryForAnchor(targetAnchor, queryType),
+        input: formatAnchors(anchors),
+        output: formatResponse(path)
     };
 }
 
-// Основная функция генерации
+// Основная функция
 async function generateDataset() {
     console.log('🎯 Генерация датасета для навигационного ассистента...\n');
     
-    const allExamples: TrainingExample[] = [];
-    let exampleCount = 0;
+    // Создаем папку для данных
+    const dataDir = ensureDataDirectory();
     
-    while (exampleCount < CONFIG.totalExamples) {
-        for (const domain of CONFIG.domains) {
-            if (exampleCount >= CONFIG.totalExamples) break;
-            
-            // Генерация якорей для домена
-            const anchors = generateFlatAnchors(domain);
-            
-            // Генерация пакета примеров для этого набора якорей
-            const batchSize = Math.min(30, CONFIG.totalExamples - exampleCount);
-            
-            for (let i = 0; i < batchSize; i++) {
-                const exampleType = weightedRandom(CONFIG.exampleTypes);
-                const example = generateExample(anchors, exampleType);
-                allExamples.push(example);
-                exampleCount++;
-                
-                if (exampleCount % 100 === 0) {
-                    process.stdout.write(`\r🔄 Сгенерировано: ${exampleCount}/${CONFIG.totalExamples} примеров`);
-                }
-            }
+    const allExamples: TrainingExample[] = [];
+    
+    for (let i = 0; i < CONFIG.totalExamples; i++) {
+        try {
+            const example = generateExample();
+            allExamples.push(example);
+        } catch (error) {
+            console.error(`Ошибка при генерации примера ${i}:`, error);
+            continue;
+        }
+        
+        if (i % 100 === 0) {
+            process.stdout.write(`\r🔄 Сгенерировано: ${i}/${CONFIG.totalExamples} примеров`);
         }
     }
     
@@ -459,27 +365,55 @@ async function generateDataset() {
     const valSet = shuffled.slice(trainSize, trainSize + valSize);
     const testSet = shuffled.slice(trainSize + valSize);
     
-    // Сохранение
-    writeFileSync('train.json', JSON.stringify(trainSet, null, 2));
-    writeFileSync('validation.json', JSON.stringify(valSet, null, 2));
-    writeFileSync('test.json', JSON.stringify(testSet, null, 2));
+    // Сохранение в папку data
+    writeFileSync(join(dataDir, 'train.json'), JSON.stringify(trainSet, null, 2));
+    writeFileSync(join(dataDir, 'validation.json'), JSON.stringify(valSet, null, 2));
+    writeFileSync(join(dataDir, 'test.json'), JSON.stringify(testSet, null, 2));
     
     console.log('📊 Статистика датасета:');
-    console.log(`   Train: ${trainSet.length} примеров`);
-    console.log(`   Validation: ${valSet.length} примеров`);
-    console.log(`   Test: ${testSet.length} примеров`);
+    console.log(`   Train: ${trainSet.length} примеров (сохранено в ${join(dataDir, 'train.json')})`);
+    console.log(`   Validation: ${valSet.length} примеров (сохранено в ${join(dataDir, 'validation.json')})`);
+    console.log(`   Test: ${testSet.length} примеров (сохранено в ${join(dataDir, 'test.json')})`);
     
-    // Анализ
-    console.log('\n📈 Анализ форматов ответов:');
-    const analysis = { found: 0, notFound: 0 };
+    // Анализ результатов
+    console.log('\n📈 Анализ типов ответов:');
+    const responseTypes = {
+        found: 0,
+        not_found: 0
+    };
+    
     allExamples.forEach(ex => {
-        if (ex.output.startsWith('not_found')) analysis.notFound++;
-        else analysis.found++;
+        if (ex.output.startsWith('not_found')) {
+            responseTypes.not_found++;
+        } else {
+            responseTypes.found++;
+        }
     });
     
-    console.log(`   Найдено: ${analysis.found} (${((analysis.found / allExamples.length) * 100).toFixed(1)}%)`);
-    console.log(`   Не найдено: ${analysis.notFound} (${((analysis.notFound / allExamples.length) * 100).toFixed(1)}%)`);
+    console.log(`   Найдено: ${responseTypes.found} (${((responseTypes.found / allExamples.length) * 100).toFixed(1)}%)`);
+    console.log(`   Не найдено: ${responseTypes.not_found} (${((responseTypes.not_found / allExamples.length) * 100).toFixed(1)}%)`);
+    
+    // Показываем несколько примеров для проверки
+    console.log('\n📝 Примеры данных:');
+    console.log('='.repeat(50));
+    
+    for (let i = 0; i < 3; i++) {
+        const example = trainSet[i];
+        console.log(`\nПример ${i + 1}:`);
+        console.log(`Instruction: ${example.instruction}`);
+        console.log(`Output: ${example.output}`);
+        console.log(`Input (первые 150 символов): ${example.input.substring(0, 150)}...`);
+    }
+    
+    console.log('\n📁 Файлы сохранены в папке:');
+    console.log(`   ${dataDir}`);
+    console.log('   ├── train.json');
+    console.log('   ├── validation.json');
+    console.log('   └── test.json');
 }
 
-// Запуск
-generateDataset().catch(console.error);
+// Запуск с обработкой ошибок
+generateDataset().catch(error => {
+    console.error('❌ Ошибка при генерации датасета:', error);
+    process.exit(1);
+});
