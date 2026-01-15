@@ -1,5 +1,5 @@
 .idea
-llm/gemma-lora
+llm/models
 node_modules
 
 gigachat-authorization-key.txt
