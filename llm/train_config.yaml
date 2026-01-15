@@ -11,8 +11,8 @@ dataset: anchor_navigation
 template: gemma
 output_dir: saves/gemma-3-1b-lora
 overwrite_output_dir: true
-per_device_train_batch_size: 2
-gradient_accumulation_steps: 4
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8
 learning_rate: 2e-4
 num_train_epochs: 3.0
 logging_steps: 10
