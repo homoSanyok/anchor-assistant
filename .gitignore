@@ -1,6 +1,7 @@
 .idea
 llm/models
 llm/saves
+llm_archive
 node_modules
 
 gigachat-authorization-key.txt
