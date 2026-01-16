@@ -7,7 +7,7 @@ lora_rank: 16
 lora_alpha: 32
 lora_dropout: 0.1
 dataset_dir: data
-dataset: anchor_navigation_train,anchor_navigation_val,anchor_assistant_test
+dataset: "anchor_assistant_train,anchor_assistant_val,anchor_assistant_test"
 template: gemma
 output_dir: saves/gemma-3-1b-lora
 overwrite_output_dir: true
