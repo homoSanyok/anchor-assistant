@@ -23,3 +23,4 @@ warmup_ratio: 0.1
 optim: adamw_torch
 fp16: true
 report_to: none
+attn_implementation: eager
