@@ -1,6 +1,6 @@
 {
   "anchor_assistant_train": {
-    "file_name": "train.json",
+    "file_name": "train.jsonl",
     "formatting": "sharegpt",
     "columns": {
       "messages": "messages"
