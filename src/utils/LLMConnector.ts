@@ -1,5 +1,5 @@
-import {Anchor, Message} from "../types";
-import {SystemPrompt} from "./SystemPrompt";
+import { Anchor, Message } from "../types";
+import { SystemPrompt } from "./SystemPrompt";
 
 /**
  * Класс типизирует методы взаимодействия объекта
