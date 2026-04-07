@@ -1,7 +1,0 @@
-model_name_or_path: ./models/gemma-3-1b
-adapter_name_or_path: saves/gemma-3-1b-lora
-template: gemma
-finetuning_type: lora
-# опционально:
-# infer_backend: huggingface   # по умолчанию
-# infer_backend: vllm          # если хочешь vLLM и оно настроено
