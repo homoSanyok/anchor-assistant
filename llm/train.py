@@ -75,6 +75,7 @@ trainer = SFTTrainer(
     ),
 )
 
+print(dataset[0]["text"])
 trainer = train_on_responses_only(
     trainer,
     instruction_part="<start_of_turn>user\n",
