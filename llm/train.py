@@ -1,23 +1,14 @@
-from pathlib import Path
 import os
-
 os.environ["TORCHDYNAMO_DISABLE"] = "1"
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["HF_DATASETS_OFFLINE"] = "1"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
-import torch
-import torch._dynamo
-torch._dynamo.config.suppress_errors = True
-
+from pathlib import Path
 from datasets import load_dataset
 from unsloth import FastModel
-from unsloth.chat_templates import (
-    get_chat_template,
-    train_on_responses_only,
-)
+from unsloth.chat_templates import get_chat_template, train_on_responses_only
 from trl import SFTTrainer, SFTConfig
 
-MAX_SEQ_LENGTH = 1024
+MAX_SEQ_LENGTH = 256
 MODEL_NAME = "./models/gemma-3-4b"
 TRAIN_PATH = "./data/train.jsonl"
 SAVE_PATH = "./saves/gemma-3-4b-lora"
@@ -38,17 +29,15 @@ model = FastModel.get_peft_model(
     finetune_language_layers=True,
     finetune_attention_modules=True,
     finetune_mlp_modules=True,
-    r=8,
-    lora_alpha=8,
+    r=4,
+    lora_alpha=4,
     lora_dropout=0,
     bias="none",
     random_state=3407,
+    use_gradient_checkpointing=True,
 )
 
-tokenizer = get_chat_template(
-    tokenizer,
-    chat_template="gemma-3",
-)
+tokenizer = get_chat_template(tokenizer, chat_template="gemma-3")
 
 dataset = load_dataset("json", data_files=TRAIN_PATH, split="train")
 
@@ -65,21 +54,19 @@ def formatting_prompts_func(examples):
     return {"text": texts}
 
 dataset = dataset.map(formatting_prompts_func, batched=True)
-dataset = dataset.train_test_split(test_size=0.02, seed=3407)
 
 trainer = SFTTrainer(
     model=model,
     tokenizer=tokenizer,
-    train_dataset=dataset["train"],
-    eval_dataset=dataset["test"],
+    train_dataset=dataset,
     args=SFTConfig(
         dataset_text_field="text",
         per_device_train_batch_size=1,
-        gradient_accumulation_steps=8,
+        gradient_accumulation_steps=32,
         warmup_steps=5,
-        num_train_epochs=1,
+        max_steps=20,          # сначала smoke test
         learning_rate=2e-4,
-        logging_steps=10,
+        logging_steps=1,
         optim="adamw_8bit",
         weight_decay=0.001,
         lr_scheduler_type="linear",
@@ -98,5 +85,3 @@ trainer.train()
 
 model.save_pretrained(SAVE_PATH)
 tokenizer.save_pretrained(SAVE_PATH)
-
-print(f"LoRA сохранена в: {SAVE_PATH}")
