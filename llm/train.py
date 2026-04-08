@@ -24,7 +24,7 @@ SAVE_PATH = "./saves/gemma-3-4b-lora"
 # Для GTX 1660 SUPER лучше начинать с 320.
 # Если снова будет OOM -> 256
 # Если датасет будет слишком сильно резаться -> 384
-MAX_SEQ_LENGTH = 320
+MAX_SEQ_LENGTH = 384
 
 BATCH_SIZE = 1
 GRAD_ACCUM = 32
