@@ -2,6 +2,8 @@ from pathlib import Path
 import os
 
 os.environ["TORCHDYNAMO_DISABLE"] = "1"
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["HF_DATASETS_OFFLINE"] = "1"
 
 import torch
 import torch._dynamo
