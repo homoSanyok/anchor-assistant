@@ -1,4 +1,11 @@
 from pathlib import Path
+import os
+
+os.environ["TORCHDYNAMO_DISABLE"] = "1"
+
+import torch
+import torch._dynamo
+torch._dynamo.config.suppress_errors = True
 
 from datasets import load_dataset
 from unsloth import FastModel
