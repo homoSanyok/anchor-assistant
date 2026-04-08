@@ -10,20 +10,16 @@ os.environ["HF_DATASETS_OFFLINE"] = "1"
 import torch
 from datasets import load_dataset
 from transformers import Trainer, TrainingArguments
-from unsloth import FastModel
+from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 
 
-# =========================
-# Настройки
-# =========================
-MODEL_PATH = "./models/gemma-3-4b"
+MODEL_PATH = "./models/qwen2.5-3b"
 TRAIN_PATH = "./data/train.jsonl"
-SAVE_PATH = "./saves/gemma-3-4b-lora"
+SAVE_PATH = "./saves/qwen2.5-3b-lora"
 
-# Для GTX 1660 SUPER лучше начинать с 320.
-# Если снова будет OOM -> 256
-# Если датасет будет слишком сильно резаться -> 384
+# Для GTX 1660 SUPER начни с 384.
+# Если будет OOM -> 320 или 256.
 MAX_SEQ_LENGTH = 384
 
 BATCH_SIZE = 1
@@ -34,36 +30,23 @@ LEARNING_RATE = 2e-4
 Path(SAVE_PATH).mkdir(parents=True, exist_ok=True)
 
 
-# =========================
-# Утилиты
-# =========================
-def find_subsequence(seq, subseq):
-    n, m = len(seq), len(subseq)
-    if m == 0 or m > n:
-        return -1
-    for i in range(n - m + 1):
-        if seq[i:i + m] == subseq:
-            return i
-    return -1
-
-
 def cleanup_user_text(text: str) -> str:
-    text = text.strip()
+    text = (text or "").strip()
 
     text = text.replace("Пользователь хочет найти раздел.\n\n", "")
     text = text.replace("Найди нужный путь.\n\n", "")
 
-    query_match = re.search(
+    m = re.search(
         r"ЗАПРОС:\s*(.*?)\s*ДОСТУПНЫЕ ЯКОРЯ:\s*(.*)",
         text,
         flags=re.S,
     )
 
-    if not query_match:
+    if not m:
         return text
 
-    query = query_match.group(1).strip()
-    anchors_raw = query_match.group(2).strip()
+    query = m.group(1).strip()
+    anchors_raw = m.group(2).strip()
 
     cleaned_lines = []
     for line in anchors_raw.splitlines():
@@ -71,7 +54,6 @@ def cleanup_user_text(text: str) -> str:
         if not line:
             continue
 
-        # Убираем шумные служебные слова, чтобы влезало больше полезного текста
         line = re.sub(
             r"\b(Подраздел:|Категория:|Меню:|Раздел:|Панель:)\s*",
             "",
@@ -98,7 +80,7 @@ def normalize_example(example):
     assistant_text = None
 
     for msg in source:
-        role = msg.get("role", "").strip()
+        role = (msg.get("role") or "").strip()
         content = (msg.get("content") or "").strip()
 
         if role == "user" and user_text is None:
@@ -122,56 +104,56 @@ class CausalLMCollator:
 
     def __call__(self, features):
         max_len = max(len(x["input_ids"]) for x in features)
-        if self.pad_to_multiple_of is not None:
+        if self.pad_to_multiple_of:
             max_len = ((max_len + self.pad_to_multiple_of - 1) // self.pad_to_multiple_of) * self.pad_to_multiple_of
-
-        input_ids = []
-        attention_mask = []
-        labels = []
 
         pad_id = self.tokenizer.pad_token_id
 
-        for f in features:
-            seq_len = len(f["input_ids"])
-            pad_len = max_len - seq_len
+        batch_input_ids = []
+        batch_attention_mask = []
+        batch_labels = []
 
-            input_ids.append(f["input_ids"] + [pad_id] * pad_len)
-            attention_mask.append(f["attention_mask"] + [0] * pad_len)
-            labels.append(f["labels"] + [-100] * pad_len)
+        for f in features:
+            pad_len = max_len - len(f["input_ids"])
+            batch_input_ids.append(f["input_ids"] + [pad_id] * pad_len)
+            batch_attention_mask.append(f["attention_mask"] + [0] * pad_len)
+            batch_labels.append(f["labels"] + [-100] * pad_len)
 
         return {
-            "input_ids": torch.tensor(input_ids, dtype=torch.long),
-            "attention_mask": torch.tensor(attention_mask, dtype=torch.long),
-            "labels": torch.tensor(labels, dtype=torch.long),
+            "input_ids": torch.tensor(batch_input_ids, dtype=torch.long),
+            "attention_mask": torch.tensor(batch_attention_mask, dtype=torch.long),
+            "labels": torch.tensor(batch_labels, dtype=torch.long),
         }
 
 
 # =========================
 # Модель
 # =========================
-model, tokenizer = FastModel.from_pretrained(
+model, tokenizer = FastLanguageModel.from_pretrained(
     model_name=MODEL_PATH,
     max_seq_length=MAX_SEQ_LENGTH,
+    dtype=None,
     load_in_4bit=True,
-    load_in_8bit=False,
-    full_finetuning=False,
 )
 
-model = FastModel.get_peft_model(
+model = FastLanguageModel.get_peft_model(
     model,
-    finetune_vision_layers=False,
-    finetune_language_layers=True,
-    finetune_attention_modules=True,
-    finetune_mlp_modules=True,
-    r=4,
-    lora_alpha=4,
+    r=8,
+    target_modules=[
+        "q_proj", "k_proj", "v_proj", "o_proj",
+        "gate_proj", "up_proj", "down_proj",
+    ],
+    lora_alpha=8,
     lora_dropout=0,
     bias="none",
+    use_gradient_checkpointing="unsloth",
     random_state=3407,
-    use_gradient_checkpointing=True,
 )
 
-tokenizer = get_chat_template(tokenizer, chat_template="gemma-3")
+tokenizer = get_chat_template(
+    tokenizer,
+    chat_template="qwen2.5",
+)
 
 if tokenizer.pad_token_id is None:
     tokenizer.pad_token = tokenizer.eos_token
@@ -188,32 +170,50 @@ raw_dataset = raw_dataset.filter(
     lambda x: x["user_text"] is not None and x["assistant_text"] is not None
 )
 
-response_prefix_ids = tokenizer(
-    "<start_of_turn>model\n",
-    add_special_tokens=False,
-).input_ids
-
 
 def build_tokens(example):
-    conversation = [
+    # prompt-only
+    prompt_messages = [
+        {"role": "user", "content": example["user_text"]},
+    ]
+
+    # full prompt + answer
+    full_messages = [
         {"role": "user", "content": example["user_text"]},
         {"role": "assistant", "content": example["assistant_text"]},
     ]
 
-    text = tokenizer.apply_chat_template(
-        conversation,
+    prompt_text = tokenizer.apply_chat_template(
+        prompt_messages,
+        tokenize=False,
+        add_generation_prompt=True,
+    )
+    full_text = tokenizer.apply_chat_template(
+        full_messages,
         tokenize=False,
         add_generation_prompt=False,
-    ).removeprefix("<bos>")
+    )
 
-    input_ids = tokenizer(
-        text,
+    prompt_ids = tokenizer(
+        prompt_text,
         add_special_tokens=False,
         truncation=False,
     ).input_ids
 
-    response_start = find_subsequence(input_ids, response_prefix_ids)
-    if response_start == -1:
+    full_ids = tokenizer(
+        full_text,
+        add_special_tokens=False,
+        truncation=False,
+    ).input_ids
+
+    if len(full_ids) > MAX_SEQ_LENGTH:
+        offset = len(full_ids) - MAX_SEQ_LENGTH
+        full_ids = full_ids[offset:]
+        prompt_len = max(0, len(prompt_ids) - offset)
+    else:
+        prompt_len = len(prompt_ids)
+
+    if prompt_len >= len(full_ids):
         return {
             "input_ids": [],
             "attention_mask": [],
@@ -221,24 +221,8 @@ def build_tokens(example):
             "keep": False,
         }
 
-    # Если пример длиннее окна:
-    # оставляем хвост, чтобы ответ точно не отрезался.
-    if len(input_ids) > MAX_SEQ_LENGTH:
-        input_ids = input_ids[-MAX_SEQ_LENGTH:]
+    labels = [-100] * prompt_len + full_ids[prompt_len:]
 
-    response_start = find_subsequence(input_ids, response_prefix_ids)
-    if response_start == -1:
-        return {
-            "input_ids": [],
-            "attention_mask": [],
-            "labels": [],
-            "keep": False,
-        }
-
-    response_tokens_start = response_start + len(response_prefix_ids)
-    labels = [-100] * response_tokens_start + input_ids[response_tokens_start:]
-
-    # Если после маскирования не осталось ни одного токена ответа — выбрасываем
     if not any(x != -100 for x in labels):
         return {
             "input_ids": [],
@@ -248,8 +232,8 @@ def build_tokens(example):
         }
 
     return {
-        "input_ids": input_ids,
-        "attention_mask": [1] * len(input_ids),
+        "input_ids": full_ids,
+        "attention_mask": [1] * len(full_ids),
         "labels": labels,
         "keep": True,
     }
@@ -271,7 +255,7 @@ print(f"Примеров после filter: {after_filter}")
 if after_filter == 0:
     raise RuntimeError(
         "После подготовки датасет пустой. "
-        "Увеличь MAX_SEQ_LENGTH до 384 или ещё сильнее сокращай текст примеров."
+        "Попробуй MAX_SEQ_LENGTH=512 или ещё сильнее сократи user-текст."
     )
 
 print("\n===== Пример train sample =====")
