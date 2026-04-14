@@ -1,11 +1,10 @@
+import json
 import time
 import uuid
-from typing import List, Literal
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any
 
 import torch
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
@@ -16,24 +15,7 @@ API_MODEL_NAME = "qwen2.5-3b-lora"
 HOST = "0.0.0.0"
 PORT = 8000
 
-app = FastAPI(title="Qwen2.5-3B LoRA API")
-
-
-class ChatMessage(BaseModel):
-    role: Literal["system", "user", "assistant"]
-    content: str
-
-
-class ChatCompletionRequest(BaseModel):
-    model: str = API_MODEL_NAME
-    messages: List[ChatMessage]
-    max_tokens: int = Field(default=128, ge=1, le=512)
-    temperature: float = Field(default=0.0, ge=0.0, le=2.0)
-    top_p: float = Field(default=1.0, gt=0.0, le=1.0)
-    stream: bool = False
-
-
-print("Загружаю токенизатор и модель...")
+print("Загружаю модель...")
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -63,7 +45,6 @@ model = PeftModel.from_pretrained(
     ADAPTER_PATH,
     local_files_only=True,
 )
-
 model.eval()
 
 try:
@@ -74,25 +55,16 @@ except StopIteration:
 print(f"Модель загружена. Устройство: {MODEL_DEVICE}")
 
 
-@app.get("/health")
-def health():
-    return {
-        "status": "ok",
-        "model": API_MODEL_NAME,
-        "device": str(MODEL_DEVICE),
-    }
+def make_json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict[str, Any]) -> None:
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    handler.send_response(status)
+    handler.send_header("Content-Type", "application/json; charset=utf-8")
+    handler.send_header("Content-Length", str(len(body)))
+    handler.end_headers()
+    handler.wfile.write(body)
 
 
-@app.post("/v1/chat/completions")
-def chat_completions(req: ChatCompletionRequest):
-    if req.stream:
-        raise HTTPException(status_code=400, detail="stream=true пока не поддерживается")
-
-    if not req.messages:
-        raise HTTPException(status_code=400, detail="messages не должен быть пустым")
-
-    messages = [m.model_dump() for m in req.messages]
-
+def generate_chat(messages, max_tokens: int, temperature: float, top_p: float) -> dict[str, Any]:
     prompt_text = tokenizer.apply_chat_template(
         messages,
         tokenize=False,
@@ -102,11 +74,11 @@ def chat_completions(req: ChatCompletionRequest):
     inputs = tokenizer(prompt_text, return_tensors="pt")
     inputs = {k: v.to(MODEL_DEVICE) for k, v in inputs.items()}
 
-    do_sample = req.temperature > 0.0
+    do_sample = temperature > 0.0
 
     generate_kwargs = {
         **inputs,
-        "max_new_tokens": req.max_tokens,
+        "max_new_tokens": max_tokens,
         "do_sample": do_sample,
         "pad_token_id": tokenizer.pad_token_id,
         "eos_token_id": tokenizer.eos_token_id,
@@ -114,13 +86,13 @@ def chat_completions(req: ChatCompletionRequest):
     }
 
     if do_sample:
-        generate_kwargs["temperature"] = req.temperature
-        generate_kwargs["top_p"] = req.top_p
+        generate_kwargs["temperature"] = temperature
+        generate_kwargs["top_p"] = top_p
 
     with torch.inference_mode():
         output_ids = model.generate(**generate_kwargs)
 
-    prompt_len = inputs["input_ids"].shape[1]
+    prompt_len = int(inputs["input_ids"].shape[1])
     completion_ids = output_ids[0][prompt_len:]
     content = tokenizer.decode(completion_ids, skip_special_tokens=True).strip()
 
@@ -140,12 +112,66 @@ def chat_completions(req: ChatCompletionRequest):
             }
         ],
         "usage": {
-            "prompt_tokens": int(prompt_len),
+            "prompt_tokens": prompt_len,
             "completion_tokens": int(len(completion_ids)),
-            "total_tokens": int(prompt_len + len(completion_ids)),
+            "total_tokens": prompt_len + int(len(completion_ids)),
         },
     }
 
 
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/health":
+            return make_json_response(self, 200, {
+                "status": "ok",
+                "model": API_MODEL_NAME,
+                "device": str(MODEL_DEVICE),
+            })
+
+        make_json_response(self, 404, {"error": "not found"})
+
+    def do_POST(self):
+        if self.path != "/v1/chat/completions":
+            return make_json_response(self, 404, {"error": "not found"})
+
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+            raw_body = self.rfile.read(content_length)
+            payload = json.loads(raw_body.decode("utf-8"))
+        except Exception as e:
+            return make_json_response(self, 400, {"error": f"invalid json: {e}"})
+
+        messages = payload.get("messages")
+        if not isinstance(messages, list) or not messages:
+            return make_json_response(self, 400, {"error": "messages must be a non-empty list"})
+
+        max_tokens = int(payload.get("max_tokens", 128))
+        temperature = float(payload.get("temperature", 0.0))
+        top_p = float(payload.get("top_p", 1.0))
+        stream = bool(payload.get("stream", False))
+
+        if stream:
+            return make_json_response(self, 400, {"error": "stream=true пока не поддерживается"})
+
+        try:
+            result = generate_chat(
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                top_p=top_p,
+            )
+            return make_json_response(self, 200, result)
+        except torch.cuda.OutOfMemoryError:
+            torch.cuda.empty_cache()
+            return make_json_response(self, 500, {"error": "CUDA out of memory"})
+        except Exception as e:
+            return make_json_response(self, 500, {"error": str(e)})
+
+    def log_message(self, format, *args):
+        print(f"[{self.address_string()}] {format % args}")
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host=HOST, port=PORT)
+    server = ThreadingHTTPServer((HOST, PORT), Handler)
+    print(f"HTTP API запущен на http://{HOST}:{PORT}")
+    server.serve_forever()
