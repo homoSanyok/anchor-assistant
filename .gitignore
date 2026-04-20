@@ -1,4 +1,5 @@
 .idea
+llm/venv
 llm/models
 llm/saves
 llm_archive
