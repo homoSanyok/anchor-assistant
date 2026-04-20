@@ -5,7 +5,7 @@
  * @constructor
  */
 export function ChatMessagesStyle(className) {
-    return `
+    return /*css*/ `
             .${className} {
                 flex: 1;
                 overflow: auto;
@@ -36,6 +36,27 @@ export function ChatMessagesStyle(className) {
             .${className} > div.llm {
                 margin-right: auto;
                 border-radius: 8px 8px 8px 0;
+            }
+
+            .${className} > div.loader {
+                margin-right: auto;
+                border-radius: 50%;
+                padding: 14px;
+                animation: pulse 1.5s infinite ease-in-out;
+            }
+            @keyframes pulse {
+                0% {
+                    transform: scale(1);
+                    opacity: 1;
+                }
+                50% {
+                    transform: scale(.8);
+                    opacity: 0.7;
+                }
+                100% {
+                    transform: scale(1);
+                    opacity: 1;
+                }
             }
         `;
 }

@@ -1,10 +1,10 @@
 /**
  * @module AnchorAssistant
  */
-import {ChatButtonIcon, ChatSendButtonIcon, ChatCloseButtonIcon} from "./icons";
-import {Message, SelectorHighlighterOptions} from "./types";
-import {ChatMessageFieldStyle, ChatStyle, ChatButtonStyle, ChatFooterStyle, ChatMessagesStyle} from "./styles";
-import {LLMConnector, SelectorHighlighter} from "./utils";
+import { ChatButtonIcon, ChatSendButtonIcon, ChatCloseButtonIcon } from "./icons";
+import { Message, SelectorHighlighterOptions } from "./types";
+import { ChatMessageFieldStyle, ChatStyle, ChatButtonStyle, ChatHeaderStyle, ChatMessagesStyle } from "./styles";
+import { LLMConnector, SelectorHighlighter } from "./utils";
 
 /**
  * Класс `AnchorAssistant`, отображающий кнопку чата,
@@ -17,7 +17,7 @@ export class AnchorAssistant {
     private readonly CHAT_BUTTON_CLASS = "anchor-assistant-chat-button";
     private readonly CHAT_CLASS = "anchor-assistant-chat";
     private readonly CHAT_MESSAGE_FIELD_CLASS = "anchor-assistant-chat-message-field";
-    private readonly CHAT_FOOTER_CLASS = "anchor-assistant-chat-footer";
+    private readonly CHAT_HEADER_CLASS = "anchor-assistant-chat-header";
     private readonly CHAT_MESSAGES_CLASS = "anchor-assistant-chat-messages";
 
     /**
@@ -168,20 +168,20 @@ export class AnchorAssistant {
      * закрытье меню по её нажатии.
      * @private
      */
-    private initChatFooter() {
-        const footer = document.createElement("div");
+    private initChatHeader() {
+        const header = document.createElement("div");
 
         // Задаёт класс элемента.
-        footer.className = this.CHAT_FOOTER_CLASS;
+        header.className = this.CHAT_HEADER_CLASS;
 
         if (!this.chat) return;
-        this.chat.appendChild(footer);
+        this.chat.appendChild(header);
 
         const button = document.createElement("button");
         const text = document.createElement("div");
 
-        footer.appendChild(text);
-        footer.appendChild(button);
+        header.appendChild(text);
+        header.appendChild(button);
 
         text.innerHTML = "Узнайте у бота, как найти нужный вам элемент сайта!"
         button.innerHTML = ChatCloseButtonIcon;
@@ -207,15 +207,18 @@ export class AnchorAssistant {
         this.chat.appendChild(chatMessages);
 
         window.addEventListener("messages-update", () => {
-            chatMessages.innerHTML = "";
+            let diff = this.messages.length - chatMessages.children.length;
+            do {
+                const message = this.messages[this.messages.length - diff];
+                diff--;
+                if (!message) continue;
 
-            for (const message of this.messages) {
                 const messageElement = document.createElement("div");
                 messageElement.className = message.from;
                 messageElement.innerHTML = message.text;
 
                 chatMessages.appendChild(messageElement);
-            }
+            } while (diff > 0);
 
             // Автоскроллл в самый низ списка.
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -239,7 +242,7 @@ export class AnchorAssistant {
         chatMessageFieldSheet.replaceSync(ChatMessageFieldStyle(this.CHAT_MESSAGE_FIELD_CLASS));
 
         const chatFooterSheet = new CSSStyleSheet();
-        chatFooterSheet.replaceSync(ChatFooterStyle(this.CHAT_FOOTER_CLASS));
+        chatFooterSheet.replaceSync(ChatHeaderStyle(this.CHAT_HEADER_CLASS));
 
         const chatMessagesSheet = new CSSStyleSheet();
         chatMessagesSheet.replaceSync(ChatMessagesStyle(this.CHAT_MESSAGES_CLASS));
@@ -263,15 +266,9 @@ export class AnchorAssistant {
     private renderElements() {
         if (!this.chatButton || !this.chat) return;
 
-        if (this.parent) {
-            // Если указан parent, создаёт элементы внутри него.
-            this.parent.appendChild(this.chatButton);
-            this.parent.appendChild(this.chat);
-            return;
-        }
-        // Если parent не указан, создаёт элементы в body.
-        document.body.appendChild(this.chatButton);
-        document.body.appendChild(this.chat);
+        const parent = this.parent ?? document.body;
+        parent.appendChild(this.chatButton);
+        parent.appendChild(this.chat);
     }
 
     /**
@@ -282,7 +279,14 @@ export class AnchorAssistant {
      * @private
      */
     private onSendMessage(input: HTMLInputElement) {
-        if (!input.value) return;
+        const chatMessages = document.querySelector(`.${this.CHAT_MESSAGES_CLASS}`);
+        const sendButton = document.querySelector(`.${this.CHAT_MESSAGE_FIELD_CLASS}`)?.querySelector("button");
+        if (
+            !input.value ||
+            !chatMessages ||
+            !sendButton ||
+            !!chatMessages.querySelector("#anchor-assistant-loader")
+        ) return;
 
         const message: Message = {
             from: "user",
@@ -293,8 +297,17 @@ export class AnchorAssistant {
 
         input.value = "";
 
+        const loaderElement = document.createElement("div");
+        loaderElement.className = "loader";
+        loaderElement.id = "anchor-assistant-loader";
+        chatMessages.appendChild(loaderElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        sendButton.classList.toggle("disabled");
+
         this.connector.send(message)
             .then(answer => {
+                loaderElement.remove();
+                sendButton.classList.toggle("disabled");
                 this.messages.push(answer);
                 window.dispatchEvent(new Event("messages-update"));
 
@@ -356,7 +369,7 @@ export class AnchorAssistant {
 
         this.initChatButton();
         this.initChat();
-        this.initChatFooter();
+        this.initChatHeader();
         this.initChatMessages();
         this.initChatMessageField();
 

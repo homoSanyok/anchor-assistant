@@ -14,7 +14,7 @@ export declare class AnchorAssistant {
     private readonly CHAT_BUTTON_CLASS;
     private readonly CHAT_CLASS;
     private readonly CHAT_MESSAGE_FIELD_CLASS;
-    private readonly CHAT_FOOTER_CLASS;
+    private readonly CHAT_HEADER_CLASS;
     private readonly CHAT_MESSAGES_CLASS;
     /**
      * Флаг хранит состояние: открыт ли чат.
@@ -66,7 +66,7 @@ export declare class AnchorAssistant {
      * закрытье меню по её нажатии.
      * @private
      */
-    private initChatFooter;
+    private initChatHeader;
     /**
      * Инициализирует область просмотра сообщений.
      * Выводит в область все сообщения из списка {@link message}.

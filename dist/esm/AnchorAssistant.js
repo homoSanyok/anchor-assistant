@@ -2,7 +2,7 @@
  * @module AnchorAssistant
  */
 import { ChatButtonIcon, ChatSendButtonIcon, ChatCloseButtonIcon } from "./icons";
-import { ChatMessageFieldStyle, ChatStyle, ChatButtonStyle, ChatFooterStyle, ChatMessagesStyle } from "./styles";
+import { ChatMessageFieldStyle, ChatStyle, ChatButtonStyle, ChatHeaderStyle, ChatMessagesStyle } from "./styles";
 import { SelectorHighlighter } from "./utils";
 /**
  * Класс `AnchorAssistant`, отображающий кнопку чата,
@@ -18,7 +18,7 @@ export class AnchorAssistant {
     CHAT_BUTTON_CLASS = "anchor-assistant-chat-button";
     CHAT_CLASS = "anchor-assistant-chat";
     CHAT_MESSAGE_FIELD_CLASS = "anchor-assistant-chat-message-field";
-    CHAT_FOOTER_CLASS = "anchor-assistant-chat-footer";
+    CHAT_HEADER_CLASS = "anchor-assistant-chat-header";
     CHAT_MESSAGES_CLASS = "anchor-assistant-chat-messages";
     /**
      * Флаг хранит состояние: открыт ли чат.
@@ -150,17 +150,17 @@ export class AnchorAssistant {
      * закрытье меню по её нажатии.
      * @private
      */
-    initChatFooter() {
-        const footer = document.createElement("div");
+    initChatHeader() {
+        const header = document.createElement("div");
         // Задаёт класс элемента.
-        footer.className = this.CHAT_FOOTER_CLASS;
+        header.className = this.CHAT_HEADER_CLASS;
         if (!this.chat)
             return;
-        this.chat.appendChild(footer);
+        this.chat.appendChild(header);
         const button = document.createElement("button");
         const text = document.createElement("div");
-        footer.appendChild(text);
-        footer.appendChild(button);
+        header.appendChild(text);
+        header.appendChild(button);
         text.innerHTML = "Узнайте у бота, как найти нужный вам элемент сайта!";
         button.innerHTML = ChatCloseButtonIcon;
         button.addEventListener("click", () => {
@@ -182,13 +182,17 @@ export class AnchorAssistant {
             return;
         this.chat.appendChild(chatMessages);
         window.addEventListener("messages-update", () => {
-            chatMessages.innerHTML = "";
-            for (const message of this.messages) {
+            let diff = this.messages.length - chatMessages.children.length;
+            do {
+                const message = this.messages[this.messages.length - diff];
+                diff--;
+                if (!message)
+                    continue;
                 const messageElement = document.createElement("div");
                 messageElement.className = message.from;
                 messageElement.innerHTML = message.text;
                 chatMessages.appendChild(messageElement);
-            }
+            } while (diff > 0);
             // Автоскроллл в самый низ списка.
             chatMessages.scrollTop = chatMessages.scrollHeight;
         });
@@ -207,7 +211,7 @@ export class AnchorAssistant {
         const chatMessageFieldSheet = new CSSStyleSheet();
         chatMessageFieldSheet.replaceSync(ChatMessageFieldStyle(this.CHAT_MESSAGE_FIELD_CLASS));
         const chatFooterSheet = new CSSStyleSheet();
-        chatFooterSheet.replaceSync(ChatFooterStyle(this.CHAT_FOOTER_CLASS));
+        chatFooterSheet.replaceSync(ChatHeaderStyle(this.CHAT_HEADER_CLASS));
         const chatMessagesSheet = new CSSStyleSheet();
         chatMessagesSheet.replaceSync(ChatMessagesStyle(this.CHAT_MESSAGES_CLASS));
         document.adoptedStyleSheets = [
@@ -228,15 +232,9 @@ export class AnchorAssistant {
     renderElements() {
         if (!this.chatButton || !this.chat)
             return;
-        if (this.parent) {
-            // Если указан parent, создаёт элементы внутри него.
-            this.parent.appendChild(this.chatButton);
-            this.parent.appendChild(this.chat);
-            return;
-        }
-        // Если parent не указан, создаёт элементы в body.
-        document.body.appendChild(this.chatButton);
-        document.body.appendChild(this.chat);
+        const parent = this.parent ?? document.body;
+        parent.appendChild(this.chatButton);
+        parent.appendChild(this.chat);
     }
     /**
      * Функция обработки отправки сообщения от пользователя.
@@ -246,7 +244,12 @@ export class AnchorAssistant {
      * @private
      */
     onSendMessage(input) {
-        if (!input.value)
+        const chatMessages = document.querySelector(`.${this.CHAT_MESSAGES_CLASS}`);
+        const sendButton = document.querySelector(`.${this.CHAT_MESSAGE_FIELD_CLASS}`)?.querySelector("button");
+        if (!input.value ||
+            !chatMessages ||
+            !sendButton ||
+            !!chatMessages.querySelector("#anchor-assistant-loader"))
             return;
         const message = {
             from: "user",
@@ -255,8 +258,16 @@ export class AnchorAssistant {
         this.messages.push(message);
         window.dispatchEvent(new Event("messages-update"));
         input.value = "";
+        const loaderElement = document.createElement("div");
+        loaderElement.className = "loader";
+        loaderElement.id = "anchor-assistant-loader";
+        chatMessages.appendChild(loaderElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        sendButton.classList.toggle("disabled");
         this.connector.send(message)
             .then(answer => {
+            loaderElement.remove();
+            sendButton.classList.toggle("disabled");
             this.messages.push(answer);
             window.dispatchEvent(new Event("messages-update"));
             const filteredSelectors = answer.selectors?.filter(selector => this.selectedSelectors.indexOf(selector) === -1);
@@ -308,7 +319,7 @@ export class AnchorAssistant {
         this.initStyles();
         this.initChatButton();
         this.initChat();
-        this.initChatFooter();
+        this.initChatHeader();
         this.initChatMessages();
         this.initChatMessageField();
         setTimeout(this.initSelectorsSelectHandler.bind(this), 0);

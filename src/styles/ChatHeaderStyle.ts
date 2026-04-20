@@ -4,7 +4,7 @@
  * @param className - название класса элемента.
  * @constructor
  */
-export function ChatMessageFieldStyle(className) {
+export function ChatHeaderStyle(className: string) {
     return /*css*/ `
             .${className} {
                 width: 100%;
@@ -14,43 +14,33 @@ export function ChatMessageFieldStyle(className) {
                 gap: 16px;
                 
                 background: #ddf0de;
-                border-radius: 0 0 8px 8px;
+                border-radius: 8px 8px 0 0;
                 
-                margin-top: auto;
-                order: 3;
-            }
-            
-            .${className} > input {
-                flex: 1;
-                border: none;
-                border-radius: 8px;
-                padding: 8px;
-            }
-            .${className} > input:focus-visible {
-                outline: none;
-                border: solid 1px #77b870;
+                order: 1;
             }
             
             .${className} > button {
                 width: 40px;
-                height: 40px;
                 
                 cursor: pointer;
                 border-radius: 25%;
                 border: none;
                 background: #ddf0de;
                 
+                margin-left: auto;
+                
                 transition: all 0.3s ease;
-            }
-            .${className} > button.disabled {
-                opacity: 0.5;
             }
             .${className} > button:hover {
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             }
-            .${className} > button.disabled:hover {
-                box-shadow: none !important;
+            
+            .${className} > div {
+                display: flex;
+                align-items: center;
+                font-style: normal;
+                font-size: 12px;
+                color: #525252;
             }
-        `;
+        `
 }
-//# sourceMappingURL=ChatMessageFieldStyle.js.map

@@ -4,8 +4,8 @@
  * @param className - название класса элемента.
  * @constructor
  */
-export function ChatFooterStyle(className: string) {
-    return `
+export function ChatHeaderStyle(className) {
+    return /*css*/ `
             .${className} {
                 width: 100%;
                 overflow: hidden;
@@ -21,7 +21,6 @@ export function ChatFooterStyle(className: string) {
             
             .${className} > button {
                 width: 40px;
-                height: 40px;
                 
                 cursor: pointer;
                 border-radius: 25%;
@@ -40,8 +39,9 @@ export function ChatFooterStyle(className: string) {
                 display: flex;
                 align-items: center;
                 font-style: normal;
-                font-size: 14px;
+                font-size: 12px;
                 color: #525252;
             }
-        `
+        `;
 }
+//# sourceMappingURL=ChatHeaderStyle.js.map

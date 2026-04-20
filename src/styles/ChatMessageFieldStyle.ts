@@ -5,7 +5,7 @@
  * @constructor
  */
 export function ChatMessageFieldStyle(className: string) {
-    return `
+    return /*css*/`
             .${className} {
                 width: 100%;
                 overflow: hidden;
@@ -42,8 +42,14 @@ export function ChatMessageFieldStyle(className: string) {
                 
                 transition: all 0.3s ease;
             }
+            .${className} > button.disabled {
+                opacity: 0.5;
+            }
             .${className} > button:hover {
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .${className} > button.disabled:hover {
+                box-shadow: none !important;
             }
         `
 }
