@@ -19,7 +19,7 @@ from transformers import (
 
 BASE_MODEL_PATH = "./models/qwen2.5-3b"
 CURRENT_ADAPTER_PATH = "./saves/qwen2.5-3b-lora"
-TRAIN_PATH = "./data/train_qwen25_rerank_yes_no.jsonl"
+TRAIN_PATH = "./data/train_rerank.jsonl"
 SAVE_PATH = "./saves/qwen2.5-3b-lora-rerank"
 
 MAX_SEQ_LENGTH = 256
