@@ -5,8 +5,10 @@
  * удаление элемента из body.
  */
 export declare class HighlightElement {
+    private readonly selector;
     private readonly element;
     private callback;
+    private readonly abortController;
     /**
      * Позиция элемента относительно области просмотра.
      * @private
@@ -37,6 +39,6 @@ export declare class HighlightElement {
      * @param element - HTMLElement, который нужно подсветить.
      * @param callback - callback события нажатия на элемент.
      */
-    constructor(element: HTMLElement, callback: () => void);
+    constructor(selector: string, element: HTMLElement, callback: () => void);
 }
 //# sourceMappingURL=HighlightElement.d.ts.map

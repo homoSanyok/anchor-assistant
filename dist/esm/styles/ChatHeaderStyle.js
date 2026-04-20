@@ -36,11 +36,16 @@ export function ChatHeaderStyle(className) {
             }
             
             .${className} > div {
-                display: flex;
-                align-items: center;
-                font-style: normal;
+                overflow: hidden;
+                color: #10141B;
+                font-variant-numeric: lining-nums tabular-nums slashed-zero;
+                text-overflow: ellipsis;
+                font-family: Arial;
                 font-size: 12px;
-                color: #525252;
+                font-style: normal;
+                font-weight: 500;
+                line-height: 16px;
+                letter-spacing: 0;
             }
         `;
 }

@@ -5,6 +5,8 @@
  * удаление элемента из body.
  */
 export class HighlightElement {
+    private readonly abortController = new AbortController();
+
     /**
      * Позиция элемента относительно области просмотра.
      * @private
@@ -56,7 +58,7 @@ export class HighlightElement {
         this.element.style.left = this.originalStyles.left;
         this.element.style.zIndex = this.originalStyles.zIndex;
 
-        this.element.removeEventListener("click", this.callback);
+        this.abortController.abort();
         this.plugElement.remove();
     }
 
@@ -65,6 +67,7 @@ export class HighlightElement {
      * @param callback - callback события нажатия на элемент.
      */
     constructor(
+        private readonly selector: string,
         private readonly element: HTMLElement,
         private callback: () => void
     ) {
@@ -79,7 +82,7 @@ export class HighlightElement {
         };
 
         this.highlight();
-        this.element.addEventListener("click", this.callback);
-        window.addEventListener("closehighlighter", this.remove.bind(this));
+        this.element.addEventListener("click", this.callback, { signal: this.abortController.signal });
+        window.addEventListener(`${this.selector}_closehighlighter`, this.remove.bind(this), { signal: this.abortController.signal });
     }
 }

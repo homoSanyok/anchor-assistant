@@ -305,7 +305,7 @@ export class AnchorAssistant {
      * @private
      */
     highlightSelectors(selectors) {
-        selectors.forEach((selector, index) => new SelectorHighlighter(selector, selectors[index - 1], this.highlighterOptions));
+        selectors.forEach((selector, index) => new SelectorHighlighter(selector, index !== 0 ? selectors[index - 1] : undefined, this.highlighterOptions));
     }
     /**
      * @param connector - экземпляр класса коннектора к LLM.

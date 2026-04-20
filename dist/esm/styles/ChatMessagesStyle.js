@@ -25,8 +25,14 @@ export function ChatMessagesStyle(className) {
                 padding: 16px;
                 max-width: 90%;
                 
-                font-style: normal;
+                color: #3D4556;
+                font-variant-numeric: lining-nums tabular-nums slashed-zero;
+                font-family: Arial;
                 font-size: 14px;
+                font-style: normal;
+                font-weight: 400;
+                line-height: 16px;
+                letter-spacing: 0;
             }
             
             .${className} > div.user {

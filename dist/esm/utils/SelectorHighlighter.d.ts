@@ -7,8 +7,8 @@ import { SelectorHighlighterOptions } from "../types";
  */
 export declare class SelectorHighlighter {
     private readonly selector;
-    private readonly parentSelector?;
     private readonly options?;
+    private readonly abortController;
     /**
      * Подсвечивает элемент по селектору {@link selector}.
      * @private
@@ -19,6 +19,6 @@ export declare class SelectorHighlighter {
      * @param parentSelector - селектор родительского компонента. Если не указан, выделение происходит сразу.
      * @param options - настройки области подсветки.
      */
-    constructor(selector: string, parentSelector?: string | undefined, options?: SelectorHighlighterOptions | undefined);
+    constructor(selector: string, parentSelector?: string, options?: SelectorHighlighterOptions | undefined);
 }
 //# sourceMappingURL=SelectorHighlighter.d.ts.map

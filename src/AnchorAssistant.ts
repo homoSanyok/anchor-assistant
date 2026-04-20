@@ -351,7 +351,7 @@ export class AnchorAssistant {
     private highlightSelectors(selectors: string[]) {
         selectors.forEach(
             (selector, index) =>
-                new SelectorHighlighter(selector, selectors[index - 1], this.highlighterOptions)
+                new SelectorHighlighter(selector, index !== 0 ? selectors[index - 1] : undefined, this.highlighterOptions)
         );
     }
 

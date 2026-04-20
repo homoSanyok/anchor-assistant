@@ -25,6 +25,7 @@ export function ChatMessageFieldStyle(className: string) {
                 border: none;
                 border-radius: 8px;
                 padding: 8px;
+                font-family: Arial;
             }
             .${className} > input:focus-visible {
                 outline: none;

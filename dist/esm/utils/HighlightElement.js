@@ -5,8 +5,10 @@
  * удаление элемента из body.
  */
 export class HighlightElement {
+    selector;
     element;
     callback;
+    abortController = new AbortController();
     /**
      * Позиция элемента относительно области просмотра.
      * @private
@@ -45,14 +47,15 @@ export class HighlightElement {
         this.element.style.top = this.originalStyles.top;
         this.element.style.left = this.originalStyles.left;
         this.element.style.zIndex = this.originalStyles.zIndex;
-        this.element.removeEventListener("click", this.callback);
+        this.abortController.abort();
         this.plugElement.remove();
     }
     /**
      * @param element - HTMLElement, который нужно подсветить.
      * @param callback - callback события нажатия на элемент.
      */
-    constructor(element, callback) {
+    constructor(selector, element, callback) {
+        this.selector = selector;
         this.element = element;
         this.callback = callback;
         this.elementRect = this.element.getBoundingClientRect();
@@ -65,8 +68,8 @@ export class HighlightElement {
             zIndex: this.element.style.zIndex
         };
         this.highlight();
-        this.element.addEventListener("click", this.callback);
-        window.addEventListener("closehighlighter", this.remove.bind(this));
+        this.element.addEventListener("click", this.callback, { signal: this.abortController.signal });
+        window.addEventListener(`${this.selector}_closehighlighter`, this.remove.bind(this), { signal: this.abortController.signal });
     }
 }
 //# sourceMappingURL=HighlightElement.js.map
