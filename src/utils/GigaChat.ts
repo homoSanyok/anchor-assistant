@@ -1,5 +1,5 @@
-import {Anchor, GigaChatChatCompletion, Message, GigaChatConfig} from "../types";
-import {LLMConnector} from "./";
+import { Anchor, Message, GigaChatConfig, GigaChatResponse, GigaChatRequest } from "../types";
+import { LLMConnector } from "./";
 
 /**
  * Класс подключает
@@ -12,9 +12,43 @@ export class GigaChat extends LLMConnector {
     private AccessToken?: string;
 
     /**
+     * Системный запрос к GigaChat.
+     * @private
+     */
+    private readonly systemPrompt = `
+        # РОЛЬ
+        Ты — AI-ассистент для навигации по веб-интерфейсу. Твоя единственная задача — анализировать запросы пользователей и предоставлять конечную точку пути до запрашиваемого элемента.
+        
+        # ДАННЫЕ
+        Тебе доступна следующая структура якорей (в формате <селектор> - <описание> - <родительский селектор>).
+        Сама структура будет отдана тебе в пользовательском сообщении.
+
+        Формат пользовтательского сообщения:
+        Запрос:\n{запрос пользователя}\n\nЯкоря:\n{полная структура якорей}
+        
+        # ИНСТРУКЦИИ ПО АНАЛИЗУ
+        1. Определи intent пользователя на основе запроса
+        2. Найди самый релевантный якорь по ключевым словам
+        3. Сформируй краткое описание того, как добраться до этого якоря
+        
+        # ФОРМАТ ОТВЕТА
+        Верни сам якорь и краткое описание того, как до него добраться.
+        Если якорь не найден, верни изменение.
+        
+        Примеры ответов:
+        - #settings-button|Настройки приложения
+        - #user-profile-button|Настройки -> кнопка редактирования пользователя
+        - not_found|Извините, раздел не найден
+        
+        # ПРАВИЛА
+        - Используй ТОЛЬКО предоставленные якоря
+        - Не придумывай новые селекторы или функциональность
+        - Если запрос не соответствует ни одному якорю возвращай: not_found
+    `;
+
+    /**
      * Функция получает от GigaChat API Access token
      * и возвращает его.
-     *
      * @private
      */
     private async accessor() {
@@ -42,6 +76,11 @@ export class GigaChat extends LLMConnector {
 
     /** @inheritDoc */
     async send(message: Message): Promise<Message> {
+        if (message.from === "llm") return {
+            from: "llm",
+            text: "Ошибка запроса! LLM может обрабатывать только пользовтательские запросы!"
+        };
+
         if (!this.AccessToken) return {
             from: "llm",
             text: "Ошибка авторизации в GigaChat!"
@@ -54,7 +93,7 @@ export class GigaChat extends LLMConnector {
             "Accept": "application/json",
             "Authorization": `Bearer ${this.AccessToken}`
         };
-        const body: GigaChatChatCompletion = {
+        const body: GigaChatRequest = {
             model: this.config.model,
             stream: false,
             update_interval: 0,
@@ -65,7 +104,7 @@ export class GigaChat extends LLMConnector {
                 },
                 {
                     role: "user",
-                    content: message.text
+                    content: `Запрос:\n${message.text}\n\nЯкоря:\n${this.anchorsString}`
                 }
             ]
         }
@@ -83,7 +122,7 @@ export class GigaChat extends LLMConnector {
             };
         }
 
-        const data: { choices: { message: { content: string } }[] } = await response.json();
+        const data: GigaChatResponse = await response.json();
         return this.parseAnswer(`${data.choices[0]?.message.content}`);
     }
 

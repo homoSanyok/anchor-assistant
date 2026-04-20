@@ -1,5 +1,5 @@
 export * from "./Message";
-export * from "./GigaChatConfig";
-export * from "./GigaChatChatCompletion";
+export * from "./GigaChat";
 export * from "./Anchor";
 export * from "./SelectorHighlighterOptions";
+export * from "./OpenAPI";

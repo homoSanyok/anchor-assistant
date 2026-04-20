@@ -15,8 +15,8 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./Message"), exports);
-__exportStar(require("./GigaChatConfig"), exports);
-__exportStar(require("./GigaChatChatCompletion"), exports);
+__exportStar(require("./GigaChat"), exports);
 __exportStar(require("./Anchor"), exports);
 __exportStar(require("./SelectorHighlighterOptions"), exports);
+__exportStar(require("./OpenAPI"), exports);
 //# sourceMappingURL=index.js.map

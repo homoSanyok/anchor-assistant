@@ -2,9 +2,9 @@
   "name": "anchor-assistant",
   "version": "0.0.13",
   "description": "",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "module": "dist/esm/index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "module": "./dist/esm/index.js",
   "exports": {
     ".": {
       "import": "./dist/esm/index.js",
@@ -13,9 +13,9 @@
     }
   },
   "scripts": {
-    "build:esm": "tsc --module es2022 --outDir dist/esm && echo '{\"type\": \"module\"}' > dist/esm/package.json",
-    "build": "tsc && npm run build:esm",
-    "start": "tsc --watch"
+    "postbuild": "echo '{\"type\": \"module\"}' > dist/esm/package.json",
+    "build": "tsc --module es2022 --outDir dist/esm && npm run postbuild",
+    "start": "tsc --module es2022 --outDir dist/esm --watch"
   },
   "repository": {
     "type": "git",
@@ -32,7 +32,7 @@
     "typescript": "^5.9.2"
   },
   "files": [
-    "dist",
+    "dist/**",
     "README.md"
   ],
   "dependencies": {

@@ -11,9 +11,13 @@ export declare class GigaChat extends LLMConnector {
      */
     private AccessToken?;
     /**
+     * Системный запрос к GigaChat.
+     * @private
+     */
+    private readonly systemPrompt;
+    /**
      * Функция получает от GigaChat API Access token
      * и возвращает его.
-     *
      * @private
      */
     private accessor;
