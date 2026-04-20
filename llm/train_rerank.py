@@ -22,11 +22,14 @@ CURRENT_ADAPTER_PATH = "./saves/qwen2.5-3b-lora"
 TRAIN_PATH = "./data/train_rerank.jsonl"
 SAVE_PATH = "./saves/qwen2.5-3b-lora-rerank"
 
-MAX_SEQ_LENGTH = 256
+MAX_SEQ_LENGTH = 192
 BATCH_SIZE = 1
-GRAD_ACCUM = 32
-NUM_EPOCHS = 1
-LEARNING_RATE = 5e-5
+GRAD_ACCUM = 8
+LEARNING_RATE = 3e-5
+
+TRAIN_EXAMPLES_LIMIT = 20000
+MAX_STEPS = 300
+SAVE_STEPS = 100
 
 Path(SAVE_PATH).mkdir(parents=True, exist_ok=True)
 
@@ -106,12 +109,15 @@ try:
 except Exception:
     pass
 
-
 print("Читаю датасет...")
 raw_dataset = load_dataset("json", data_files=TRAIN_PATH, split="train")
+raw_dataset = raw_dataset.shuffle(seed=3407)
 
-# ожидается формат:
-# {"conversations":[{"role":"system","content":"..."},{"role":"user","content":"..."},{"role":"assistant","content":"yes"}]}
+if TRAIN_EXAMPLES_LIMIT is not None:
+    train_limit = min(TRAIN_EXAMPLES_LIMIT, len(raw_dataset))
+    raw_dataset = raw_dataset.select(range(train_limit))
+
+
 def build_tokens(example):
     conversations = example["conversations"]
 
@@ -123,7 +129,6 @@ def build_tokens(example):
             "keep": False,
         }
 
-    # prompt-only = все сообщения кроме последнего assistant
     prompt_messages = conversations[:-1]
     full_messages = conversations
 
@@ -186,6 +191,7 @@ def build_tokens(example):
 
 dataset = raw_dataset.map(build_tokens)
 before_filter = len(dataset)
+
 dataset = dataset.filter(lambda x: x["keep"] is True)
 after_filter = len(dataset)
 
@@ -199,7 +205,7 @@ print(f"Примеров после filter: {after_filter}")
 if after_filter == 0:
     raise RuntimeError(
         "После подготовки датасет пустой. "
-        "Попробуй увеличить MAX_SEQ_LENGTH до 320 или проверить TRAIN_PATH."
+        "Попробуй увеличить MAX_SEQ_LENGTH до 224 или проверить TRAIN_PATH."
     )
 
 print("\n===== Пример train sample =====")
@@ -214,21 +220,24 @@ training_args = TrainingArguments(
     output_dir=SAVE_PATH,
     per_device_train_batch_size=BATCH_SIZE,
     gradient_accumulation_steps=GRAD_ACCUM,
-    num_train_epochs=NUM_EPOCHS,
+    max_steps=MAX_STEPS,
     learning_rate=LEARNING_RATE,
-    logging_steps=10,
-    save_strategy="epoch",
+    logging_steps=5,
+    save_strategy="steps",
+    save_steps=SAVE_STEPS,
     save_total_limit=2,
     optim="paged_adamw_8bit",
     weight_decay=0.001,
     lr_scheduler_type="linear",
-    warmup_steps=10,
+    warmup_steps=20,
     report_to="none",
     remove_unused_columns=False,
     fp16=False,
     bf16=False,
     dataloader_num_workers=0,
     max_grad_norm=1.0,
+    gradient_checkpointing=True,
+    gradient_checkpointing_kwargs={"use_reentrant": False},
 )
 
 trainer = Trainer(

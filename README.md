@@ -14,6 +14,8 @@
 После успешного поиска библиотека сама подсветит в вашем приложении нужные кнопки и элементы, которые вы искали.
 
 Библиотека уже поддерживает взаимодействие с:
+
+- [OpenAPI](#OpenAPI).
 - [GigaChat](#GigaChat).
 
 # Установка
@@ -28,49 +30,50 @@ npm i anchor-assistant
 Для этого импортируйте тип `Anchor` и создайте массив объектов этого типа.
 
 Пример:
+
 ```ts
 import { Anchor } from "anchor-assistant";
 
 /**
  * Список якорных ссылок на элементы в вашем приложении.
  * Описанные селекторы должны соответствовать HTML элементам вашего приложения.
- * 
+ *
  * selector - идентификатор вашего элемента.
  *            Под капотом использует querySelectorAll, по этому полностью совместим со всеми HTML селекторами.
- *            
+ *
  * anchor - ключевые слова и/или краткое описание компонента.
  *          Дайте описание селектора так, чтобы LLM смогла ассоциировать запросы пользователей с ним.
- *          
+ *
  * parent_selector - идентификатор родительского элемента.
  *                   Необходим для того, чтобы LLM могла построить последовательный список селекторов,
  *                   взаимодействие с которыми приведёт пользователя к желаемому элементу.
  */
 const anchors: Anchor[] = [
-    {
-        selector: "#settings-button",
-        anchor: "кнопка настроек, открыть настройки",
-        parent_selector: "root"
-    },
-    {
-        selector: "#link-button",
-        anchor: "открыть ссылку, выбрать элемент",
-        parent_selector: "root"
-    },
-    {
-        selector: "#edit-link-button",
-        anchor: "изменить ссылку, изменить элемент, редактировать ссылку",
-        parent_selector: "#settings-button"
-    },
-    {
-        selector: "#settings-edit",
-        anchor: "меню создания элемента, добавить ссылку, создать элемент",
-        parent_selector: "#settings-button"
-    },
-    {
-        selector: "#settings-palette",
-        anchor: "изменить тему, меню смены цветовой схемы приложения",
-        parent_selector: "#settings-button"
-    }
+  {
+    selector: "#settings-button",
+    anchor: "кнопка настроек, открыть настройки",
+    parent_selector: "root",
+  },
+  {
+    selector: "#link-button",
+    anchor: "открыть ссылку, выбрать элемент",
+    parent_selector: "root",
+  },
+  {
+    selector: "#edit-link-button",
+    anchor: "изменить ссылку, изменить элемент, редактировать ссылку",
+    parent_selector: "#settings-button",
+  },
+  {
+    selector: "#settings-edit",
+    anchor: "меню создания элемента, добавить ссылку, создать элемент",
+    parent_selector: "#settings-button",
+  },
+  {
+    selector: "#settings-palette",
+    anchor: "изменить тему, меню смены цветовой схемы приложения",
+    parent_selector: "#settings-button",
+  },
 ];
 ```
 
@@ -80,65 +83,85 @@ const anchors: Anchor[] = [
 Пример:
 
 ```ts
-import {LLMConnector, Anchors, Message} from "anchor-assistant";
+import { LLMConnector, Anchors, Message } from "anchor-assistant";
 
 class Connector extends LLMConnector {
-    /**
-     * В этой функции реализуйте взаимодействие с LLM.
-     * @param message
-     */
-    async send(message: Message) {
-        const response = (await (await fetch(
-            // ...
-        )).json()) as { answer: string };
+  /**
+   * В этой функции реализуйте взаимодействие с LLM.
+   * @param message
+   */
+  async send(message: Message) {
+    const response = (await (
+      await fetch()
+    )
+      // ...
+      .json()) as { answer: string };
 
-        // Используйте родительский метод parseAnswer для 
-        // парсинга ответа от LLM в тип Message.
-        return this.parseAnswer(response.answer);
-    }
+    // Используйте родительский метод parseAnswer для
+    // парсинга ответа от LLM в тип Message.
+    return this.parseAnswer(response.answer);
+  }
 
-    /**
-     * Обязательно вызовите конструктор соперкласса, передав ему ваши якорные ссылки.
-     *
-     * @param anchors - якорные ссылки
-     */
-    constructor(anchors: Anchors[]) {
-        super(anchors);
-    }
+  /**
+   * Обязательно вызовите конструктор соперкласса, передав ему ваши якорные ссылки.
+   *
+   * @param anchors - якорные ссылки
+   */
+  constructor(anchors: Anchors[]) {
+    super(anchors);
+  }
 }
 ```
 
 Теперь вы можете создать экземпляр класса `AnchorAssistant`:
+
 ```ts
 import { AnchorAssistant } from "anchor-assistant";
 
 new AnchorAssistant(
-    connector, 
-    undefined, // Ссылка на родительский элемент для элемента чата.
-    {
-        delay: 300 // Задержка подсвечивания элементов интерфейса.
-    }
-)
+  connector,
+  undefined, // Ссылка на родительский элемент для элемента чата.
+  {
+    delay: 300, // Задержка подсвечивания элементов интерфейса.
+  },
+);
 ```
 
 Вам предоставлены коннекторов для некоторых LLM.
 Предоставленные коннекторы уже умеют взаимодействовать с API, вам останется только
 создать их экземпляр, задать `options` и пользоваться.
 
+- [OpenAPI](#OpenAPI).
 - [GigaChat](#GigaChat).
+
+### OpenAPI
+
+Для работы с коннектором `OpenAPI` импортируйте его и передайте экземпляру класса `AnchorAssistant`.
+
+```ts
+import { OpenAPI } from "anchor-assistant";
+
+const connector = new OpenAPI(anchors, {
+  model: "qwen2.5-3b-lora",
+  max_tokens: 64,
+  temperature: 0,
+  model_url: "http://localhost:8000/v1/chat/completions",
+});
+```
 
 ### GigaChat
 
 Для работы с коннектором `GigaChat` импортируйте его и передайте экземпляру класса `AnchorAssistant`.
+
 ```ts
 import { GigaChat } from "anchor-assistant";
 
 const connector = new GigaChat(anchors, {
-    accessor_url: "/accessor", // Ссылка на Смену Access Key.
-    model_url: "/model", // Ссылка на API взаимодействия с LLM.
+  accessor_url: "/accessor", // Ссылка на Смену Access Key.
+  model_url: "/model", // Ссылка на API взаимодействия с LLM.
 
-    authorization_key: "[your_key]", // Ваш ключ авторизации.
-    scope: "GIGACHAT_API_PERS", // Ваш scope.
-    model: "GigaChat-2" // Выбранная вами модель.
+  authorization_key: "[your_key]", // Ваш ключ авторизации.
+  scope: "GIGACHAT_API_PERS", // Ваш scope.
+  model: "GigaChat-2", // Выбранная вами модель.
 });
 ```

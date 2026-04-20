@@ -25,7 +25,7 @@ export function ChatMessagesStyle(className) {
                 padding: 16px;
                 max-width: 90%;
                 
-                color: #3D4556;
+                color: #10141B;
                 font-variant-numeric: lining-nums tabular-nums slashed-zero;
                 font-family: Arial;
                 font-size: 14px;
@@ -45,9 +45,10 @@ export function ChatMessagesStyle(className) {
             }
 
             .${className} > div.loader {
+                background: #ddf0de;
                 margin-right: auto;
                 border-radius: 50%;
-                padding: 14px;
+                padding: 10px;
                 animation: pulse 1.5s infinite ease-in-out;
             }
             @keyframes pulse {
@@ -56,8 +57,8 @@ export function ChatMessagesStyle(className) {
                     opacity: 1;
                 }
                 50% {
-                    transform: scale(.8);
-                    opacity: 0.7;
+                    transform: scale(.85);
+                    opacity: 0.85;
                 }
                 100% {
                     transform: scale(1);
