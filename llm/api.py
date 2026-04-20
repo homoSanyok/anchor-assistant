@@ -14,6 +14,7 @@ API_MODEL_NAME = "qwen2.5-3b-lora"
 
 HOST = "0.0.0.0"
 PORT = 8000
+ALLOWED_ORIGIN = "http://localhost:4200"
 
 print("Загружаю модель...")
 
@@ -120,6 +121,17 @@ def generate_chat(messages, max_tokens: int, temperature: float, top_p: float) -
 
 
 class Handler(BaseHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header("Access-Control-Allow-Origin", ALLOWED_ORIGIN)
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Vary", "Origin")
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.end_headers()
+
     def do_GET(self):
         if self.path == "/health":
             return make_json_response(self, 200, {
@@ -128,7 +140,7 @@ class Handler(BaseHTTPRequestHandler):
                 "device": str(MODEL_DEVICE),
             })
 
-        make_json_response(self, 404, {"error": "not found"})
+        return make_json_response(self, 404, {"error": "not found"})
 
     def do_POST(self):
         if self.path != "/v1/chat/completions":
@@ -169,7 +181,6 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
         print(f"[{self.address_string()}] {format % args}")
-
 
 if __name__ == "__main__":
     server = ThreadingHTTPServer((HOST, PORT), Handler)
