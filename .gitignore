@@ -4,5 +4,6 @@ llm/saves
 llm_archive
 node_modules
 .DS_Store
+llm/.DS_Store
 
 gigachat-authorization-key.txt
