@@ -15,7 +15,7 @@ export class LLMConnector {
     selectorFinder(selectors) {
         const selector = selectors.at(-1) ?? "";
         const parentSelector = this.anchors.find(anchor => anchor.selector === selector)?.parent_selector;
-        if (!parentSelector)
+        if (!parentSelector || parentSelector === "root")
             return selectors;
         return this.selectorFinder([...selectors, parentSelector]);
     }
@@ -26,12 +26,16 @@ export class LLMConnector {
      */
     parseAnswer(answer) {
         let [link, text] = answer.split("|");
-        if (!link) {
+        if (!link)
             return {
                 from: "llm",
                 text: "Ошибка парсинга ответа LLM!"
             };
-        }
+        if (link === "not_found")
+            return {
+                from: "llm",
+                text: "Извините, раздел не найден."
+            };
         return {
             from: "llm",
             text: text ?? "Для доступа к искомому меню, выберайте выделяемые на экране элементы пока не достигнете цели.",
