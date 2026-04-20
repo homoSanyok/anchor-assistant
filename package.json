@@ -13,8 +13,9 @@
     }
   },
   "scripts": {
+    "build:esm": "tsc --module es2022 --outDir dist/esm && echo '{\"type\": \"module\"}' > dist/esm/package.json",
     "build": "tsc && npm run build:esm",
-    "build:esm": "tsc --module es2022 --outDir dist/esm && echo '{\"type\": \"module\"}' > dist/esm/package.json"
+    "start": "tsc --watch"
   },
   "repository": {
     "type": "git",
