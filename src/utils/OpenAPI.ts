@@ -25,18 +25,25 @@ export class OpenAPI extends LLMConnector {
             temperature: this.config.temperature
         };
 
-        const response = await fetch(this.config.model_url, {
-            method: "POST",
-            body: JSON.stringify(body)
-        });
+        try {
+            const response = await fetch(this.config.model_url, {
+                method: "POST",
+                body: JSON.stringify(body)
+            })
 
-        if (!response.ok) return {
-            from: "llm",
-            text: "Ошибка отправки запроса в GigaChat!"
-        };
+            if (!response.ok) return {
+                from: "llm",
+                text: "Ошибка отправки запроса в LLM!"
+            };
 
-        const data: OpenAPIResponse = await response.json();
-        return this.parseAnswer(`${data.choices[0]?.message.content}`);
+            const data: OpenAPIResponse = await response.json();
+            return this.parseAnswer(`${data.choices[0]?.message.content}`);
+        } catch {
+            return {
+                from: "llm",
+                text: "Ошибка отправки запроса в LLM! Проверьте доступность сервера."
+            };
+        }
     }
 
     constructor(anchors: Anchor[], private readonly config: OpenAPIConfig) {
