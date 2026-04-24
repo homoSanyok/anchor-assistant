@@ -1,14 +1,14 @@
 import json
+import math
 import time
 import uuid
-import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 import torch
 import torch.nn.functional as F
 from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 BASE_MODEL_PATH = "./models/qwen2.5-3b"
 ADAPTER_PATH = "./saves/qwen2.5-3b-lora-rerank"
@@ -24,17 +24,14 @@ SYSTEM_PROMPT = (
     "Отвечай строго только yes или no."
 )
 
-if torch.cuda.is_available():
-    MODEL_DEVICE = torch.device("cuda")
-    MODEL_DTYPE = torch.float16
-elif torch.backends.mps.is_available():
-    MODEL_DEVICE = torch.device("mps")
-    MODEL_DTYPE = torch.float16
-else:
-    MODEL_DEVICE = torch.device("cpu")
-    MODEL_DTYPE = torch.float32
-
 print("Загружаю модель...")
+
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_compute_dtype=torch.float16,
+)
 
 tokenizer = AutoTokenizer.from_pretrained(
     ADAPTER_PATH,
@@ -47,21 +44,22 @@ if tokenizer.pad_token_id is None:
 
 base_model = AutoModelForCausalLM.from_pretrained(
     BASE_MODEL_PATH,
-    dtype=MODEL_DTYPE,
+    quantization_config=bnb_config,
+    device_map="auto",
     local_files_only=True,
-    low_cpu_mem_usage=True,
 )
-
-base_model = base_model.to(MODEL_DEVICE)
 
 model = PeftModel.from_pretrained(
     base_model,
     ADAPTER_PATH,
     local_files_only=True,
 )
-
-model = model.to(MODEL_DEVICE)
 model.eval()
+
+try:
+    MODEL_DEVICE = next(model.parameters()).device
+except StopIteration:
+    MODEL_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(f"Модель загружена. Устройство: {MODEL_DEVICE}")
 
@@ -100,7 +98,9 @@ def extract_query_and_anchors(messages: list[dict[str, Any]]) -> tuple[str, list
     anchors = []
     for raw_line in anchors_block.splitlines():
         line = raw_line.strip()
-        if not line or not line.startswith("#"):
+        if not line:
+            continue
+        if not line.startswith("#"):
             continue
 
         parts = [p.strip() for p in line.split(" - ")]
@@ -114,13 +114,11 @@ def extract_query_and_anchors(messages: list[dict[str, Any]]) -> tuple[str, list
         if not selector or not anchor or not parent_selector:
             continue
 
-        anchors.append(
-            {
-                "selector": selector,
-                "anchor": anchor,
-                "parent_selector": parent_selector,
-            }
-        )
+        anchors.append({
+            "selector": selector,
+            "anchor": anchor,
+            "parent_selector": parent_selector,
+        })
 
     if not query:
         raise ValueError("пустой запрос")
@@ -131,41 +129,33 @@ def extract_query_and_anchors(messages: list[dict[str, Any]]) -> tuple[str, list
 
 
 def average_completion_logprob(messages: list[dict[str, str]], answer: str) -> tuple[float, int, int]:
-    prompt_inputs = tokenizer.apply_chat_template(
+    prompt_ids = tokenizer.apply_chat_template(
         messages,
         tokenize=True,
         add_generation_prompt=True,
         return_tensors="pt",
-        return_dict=True,
-    )
+    ).to(MODEL_DEVICE)
 
-    full_inputs = tokenizer.apply_chat_template(
+    full_ids = tokenizer.apply_chat_template(
         messages + [{"role": "assistant", "content": answer}],
         tokenize=True,
         add_generation_prompt=False,
         return_tensors="pt",
-        return_dict=True,
-    )
+    ).to(MODEL_DEVICE)
 
-    prompt_inputs = {k: v.to(MODEL_DEVICE) for k, v in prompt_inputs.items()}
-    full_inputs = {k: v.to(MODEL_DEVICE) for k, v in full_inputs.items()}
-
-    prompt_input_ids = prompt_inputs["input_ids"]
-    full_input_ids = full_inputs["input_ids"]
-
-    prompt_len = int(prompt_input_ids.shape[1])
-    full_len = int(full_input_ids.shape[1])
+    prompt_len = int(prompt_ids.shape[1])
+    full_len = int(full_ids.shape[1])
 
     with torch.inference_mode():
-        outputs = model(**full_inputs)
-        logits = outputs.logits.float()
+        outputs = model(full_ids)
+        logits = outputs.logits
 
     log_probs = F.log_softmax(logits, dim=-1)
 
     token_logprobs = []
     for pos in range(prompt_len, full_len):
-        token_id = int(full_input_ids[0, pos].item())
-        lp = float(log_probs[0, pos - 1, token_id].item())
+        token_id = full_ids[0, pos]
+        lp = log_probs[0, pos - 1, token_id].item()
         token_logprobs.append(lp)
 
     if not token_logprobs:
@@ -209,6 +199,9 @@ def rerank_selector_from_messages(messages: list[dict[str, Any]]) -> dict[str, A
     scored.sort(key=lambda x: x["margin"], reverse=True)
 
     best = scored[0]
+
+    # Порог можно подкрутить позже. Пока мягкая эвристика.
+    # Если лучший кандидат хуже "no", возвращаем not_found.
     best_selector = best["selector"] if best["margin"] >= 0.0 else "not_found"
 
     prompt_tokens = sum(item["prompt_tokens"] for item in scored)
@@ -226,6 +219,7 @@ def rerank_selector_from_messages(messages: list[dict[str, Any]]) -> dict[str, A
 
 
 def generate_chat(messages, max_tokens: int, temperature: float, top_p: float) -> dict[str, Any]:
+    # Интерфейс сохраняем, но для rerank max_tokens / temperature / top_p не используются.
     result = rerank_selector_from_messages(messages)
     content = result["selector"]
 
@@ -262,15 +256,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            return make_json_response(
-                self,
-                200,
-                {
-                    "status": "ok",
-                    "model": API_MODEL_NAME,
-                    "device": str(MODEL_DEVICE),
-                },
-            )
+            return make_json_response(self, 200, {
+                "status": "ok",
+                "model": API_MODEL_NAME,
+                "device": str(MODEL_DEVICE),
+            })
 
         return make_json_response(self, 404, {"error": "not found"})
 
@@ -305,23 +295,10 @@ class Handler(BaseHTTPRequestHandler):
                 top_p=top_p,
             )
             return make_json_response(self, 200, result)
-        except RuntimeError as e:
-            traceback.print_exc()
-
-            err = str(e).lower()
-            if "out of memory" in err:
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                if torch.backends.mps.is_available():
-                    try:
-                        torch.mps.empty_cache()
-                    except Exception:
-                        pass
-                return make_json_response(self, 500, {"error": "out of memory"})
-
-            return make_json_response(self, 500, {"error": str(e)})
+        except torch.cuda.OutOfMemoryError:
+            torch.cuda.empty_cache()
+            return make_json_response(self, 500, {"error": "CUDA out of memory"})
         except Exception as e:
-            traceback.print_exc()
             return make_json_response(self, 500, {"error": str(e)})
 
     def log_message(self, format, *args):
